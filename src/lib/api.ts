@@ -1,0 +1,140 @@
+import { supabase } from "@/integrations/supabase/client";
+
+const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+export async function adminRequest(action: string, table: string, data?: any, id?: string, filters?: any, password?: string) {
+  const res = await fetch(`${FUNCTIONS_URL}/admin-operations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-password': password || '',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ action, table, data, id, filters }),
+  });
+  
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Request failed');
+  }
+  return res.json();
+}
+
+export async function generateCertificateText(params: {
+  participantName?: string;
+  workshopTitle: string;
+  workshopDate: string;
+  presenterName: string;
+  signerName: string;
+  companyName: string;
+  companyLogoUrl?: string;
+  type: 'participant' | 'presenter';
+}) {
+  const res = await fetch(`${FUNCTIONS_URL}/generate-certificate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify(params),
+  });
+  
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Certificate generation failed');
+  }
+  return res.json();
+}
+
+// Public read operations using supabase client directly
+export async function getWorkshops() {
+  const { data, error } = await supabase
+    .from('workshops')
+    .select('*, presenters(*)')
+    .order('date', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkshop(id: string) {
+  const { data, error } = await supabase
+    .from('workshops')
+    .select('*, presenters(*)')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkshopVideos(workshopId: string) {
+  const { data, error } = await supabase
+    .from('workshop_videos')
+    .select('*')
+    .eq('workshop_id', workshopId)
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkshopMaterials(workshopId: string) {
+  const { data, error } = await supabase
+    .from('workshop_materials')
+    .select('*')
+    .eq('workshop_id', workshopId)
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkshopParticipants(workshopId: string) {
+  const { data, error } = await supabase
+    .from('workshop_participants')
+    .select('*')
+    .eq('workshop_id', workshopId)
+    .order('registered_at');
+  if (error) throw error;
+  return data;
+}
+
+export async function registerForWorkshop(workshopId: string, fullName: string, email: string) {
+  const { data, error } = await supabase
+    .from('workshop_participants')
+    .insert({ workshop_id: workshopId, full_name: fullName, email })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getCompanySettings() {
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select('*')
+    .limit(1)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getPresenters() {
+  const { data, error } = await supabase
+    .from('presenters')
+    .select('*')
+    .order('name');
+  if (error) throw error;
+  return data;
+}
+
+export function getStorageUrl(path: string) {
+  const { data } = supabase.storage.from('workshop-assets').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function uploadFile(file: File, folder: string) {
+  const fileName = `${folder}/${Date.now()}-${file.name}`;
+  const { data, error } = await supabase.storage
+    .from('workshop-assets')
+    .upload(fileName, file);
+  if (error) throw error;
+  return getStorageUrl(data.path);
+}
