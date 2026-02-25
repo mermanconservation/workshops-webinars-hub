@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Index from "./pages/Index";
 import WorkshopDetail from "./pages/WorkshopDetail";
 import AdminPanel from "./pages/AdminPanel";
+import VerifyCertificate from "./pages/VerifyCertificate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/workshop/:id" element={<WorkshopDetail />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/verify" element={<VerifyCertificate />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

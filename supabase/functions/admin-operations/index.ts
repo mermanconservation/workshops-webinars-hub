@@ -14,8 +14,13 @@ serve(async (req) => {
   }
 
   try {
+    const { action, table, data, id, filters } = await req.json();
+
+    // Allow public inserts to certificate_verifications without password
+    const isPublicCertInsert = table === 'certificate_verifications' && action === 'insert';
+
     const password = req.headers.get('x-admin-password');
-    if (password !== ADMIN_PASSWORD) {
+    if (!isPublicCertInsert && password !== ADMIN_PASSWORD) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -27,6 +32,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, table, data, id, filters } = await req.json();
+
+    // Table whitelist for non-admin operations
+    const allowedTables = ['workshops', 'presenters', 'company_settings', 'workshop_videos', 'workshop_materials', 'workshop_participants', 'certificate_verifications'];
+    if (!allowedTables.includes(table)) throw new Error('Invalid table');
 
     let result;
 

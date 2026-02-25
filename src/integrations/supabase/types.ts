@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      certificate_verifications: {
+        Row: {
+          certificate_type: string
+          company_name: string
+          id: string
+          issued_at: string
+          participant_name: string
+          verification_code: string
+          workshop_date: string
+          workshop_id: string
+          workshop_title: string
+        }
+        Insert: {
+          certificate_type?: string
+          company_name: string
+          id?: string
+          issued_at?: string
+          participant_name: string
+          verification_code: string
+          workshop_date: string
+          workshop_id: string
+          workshop_title: string
+        }
+        Update: {
+          certificate_type?: string
+          company_name?: string
+          id?: string
+          issued_at?: string
+          participant_name?: string
+          verification_code?: string
+          workshop_date?: string
+          workshop_id?: string
+          workshop_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_verifications_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           additional_details: string | null
@@ -186,6 +230,7 @@ export type Database = {
           is_completed: boolean
           location: string | null
           max_participants: number | null
+          partner_logos: string[] | null
           presenter_id: string | null
           title: string
           updated_at: string
@@ -199,6 +244,7 @@ export type Database = {
           is_completed?: boolean
           location?: string | null
           max_participants?: number | null
+          partner_logos?: string[] | null
           presenter_id?: string | null
           title: string
           updated_at?: string
@@ -212,6 +258,7 @@ export type Database = {
           is_completed?: boolean
           location?: string | null
           max_participants?: number | null
+          partner_logos?: string[] | null
           presenter_id?: string | null
           title?: string
           updated_at?: string
