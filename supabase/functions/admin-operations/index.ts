@@ -31,9 +31,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, table, data, id, filters } = await req.json();
-
-    // Table whitelist for non-admin operations
     const allowedTables = ['workshops', 'presenters', 'company_settings', 'workshop_videos', 'workshop_materials', 'workshop_participants', 'certificate_verifications'];
     if (!allowedTables.includes(table)) throw new Error('Invalid table');
 
