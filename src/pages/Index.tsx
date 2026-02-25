@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, Users, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getWorkshops, getCompanySettings } from '@/lib/api';
 import { format } from 'date-fns';
@@ -25,8 +25,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <header className="bg-gradient-forest py-20 px-6">
+      {/* Hero - no separate header/footer, just hero section */}
+      <div className="bg-gradient-forest py-20 px-6">
         <div className="max-w-5xl mx-auto text-center">
           {company?.logo_url && (
             <motion.img
@@ -53,7 +53,7 @@ const Index = () => {
             Join our expert-led workshops, access recordings & materials, and receive certificates of participation.
           </motion.p>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         {loading ? (
@@ -93,13 +93,17 @@ const Index = () => {
                 </div>
               </section>
             )}
+
+            {/* Verify link */}
+            <section className="mt-12 text-center">
+              <Link to="/verify" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ShieldCheck className="w-4 h-4" /> Verify a certificate
+              </Link>
+            </section>
           </>
         )}
       </main>
 
-      <footer className="bg-primary text-primary-foreground py-8 px-6 text-center text-sm">
-        <p>© {new Date().getFullYear()} {company?.company_name || 'Wildlife UK'}. All rights reserved.</p>
-      </footer>
     </div>
   );
 };

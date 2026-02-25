@@ -138,3 +138,50 @@ export async function uploadFile(file: File, folder: string) {
   if (error) throw error;
   return getStorageUrl(data.path);
 }
+
+export async function saveCertificateVerification(params: {
+  verificationCode: string;
+  participantName: string;
+  workshopId: string;
+  workshopTitle: string;
+  workshopDate: string;
+  certificateType: string;
+  companyName: string;
+}) {
+  const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+  const res = await fetch(`${FUNCTIONS_URL}/admin-operations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({
+      action: 'insert',
+      table: 'certificate_verifications',
+      data: {
+        verification_code: params.verificationCode,
+        participant_name: params.participantName,
+        workshop_id: params.workshopId,
+        workshop_title: params.workshopTitle,
+        workshop_date: params.workshopDate,
+        certificate_type: params.certificateType,
+        company_name: params.companyName,
+      },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Verification save failed');
+  }
+  return res.json();
+}
+
+export async function verifyCertificate(code: string) {
+  const { data, error } = await supabase
+    .from('certificate_verifications')
+    .select('*')
+    .eq('verification_code', code)
+    .single();
+  if (error) throw error;
+  return data;
+}

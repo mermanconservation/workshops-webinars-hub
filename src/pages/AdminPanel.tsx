@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants } from '@/lib/api';
+import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification } from '@/lib/api';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { useToast } from '@/hooks/use-toast';
@@ -214,6 +214,8 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (!ws) return;
     const presenter = presenters.find(p => p.id === ws.presenter_id);
     try {
+      const verificationCode = generateVerificationCode();
+      const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
       const { certificateText } = await generateCertificateText({
         participantName: participant.full_name,
         workshopTitle: ws.title,
@@ -223,6 +225,17 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         companyName: company?.company_name || 'Wildlife UK',
         type: 'participant',
       });
+      try {
+        await saveCertificateVerification({
+          verificationCode,
+          participantName: participant.full_name,
+          workshopId: ws.id,
+          workshopTitle: ws.title,
+          workshopDate: ws.date,
+          certificateType: 'participant',
+          companyName: company?.company_name || 'Wildlife UK',
+        });
+      } catch (e) { console.warn('Verification save failed'); }
       await generateCertificatePDF({
         certificateText,
         participantName: participant.full_name,
@@ -232,12 +245,42 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         signatureUrl: company?.director_signature_url || presenter?.signature_url,
         companyName: company?.company_name || 'Wildlife UK',
         companyLogoUrl: company?.logo_url,
+        partnerLogos: ws.partner_logos || [],
         type: 'participant',
+        verificationCode,
+        verificationUrl,
       });
     } catch (e: any) {
       toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
     }
   };
+
+  const addPartnerLogo = async (wsId: string, file: File) => {
+    try {
+      const url = await uploadFile(file, `partner-logos/${wsId}`);
+      const ws = workshops.find(w => w.id === wsId);
+      const currentLogos = ws?.partner_logos || [];
+      await adminRequest('update', 'workshops', { partner_logos: [...currentLogos, url] }, wsId, undefined, adminPwd);
+      toast({ title: 'Partner logo added' });
+      load();
+    } catch (e: any) {
+      toast({ title: 'Upload failed', variant: 'destructive' });
+    }
+  };
+
+  const removePartnerLogo = async (wsId: string, logoUrl: string) => {
+    const ws = workshops.find(w => w.id === wsId);
+    const updated = (ws?.partner_logos || []).filter((l: string) => l !== logoUrl);
+    await adminRequest('update', 'workshops', { partner_logos: updated }, wsId, undefined, adminPwd);
+    load();
+  };
+
+  function generateVerificationCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'WK-';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
 
   const selectedWs = workshops.find(w => w.id === selectedWorkshop);
 
@@ -330,6 +373,23 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   <label className="inline-flex items-center gap-2 mt-2 cursor-pointer bg-secondary text-secondary-foreground px-3 py-2 rounded-md text-sm">
                     <Upload className="w-4 h-4" /> Upload File
                     <input type="file" className="hidden" onChange={e => e.target.files?.[0] && addMaterial(e.target.files[0])} />
+                  </label>
+                </div>
+
+                {/* Partner Logos */}
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><ImagePlus className="w-4 h-4 text-accent" /> Partner Logos</h4>
+                  <div className="flex flex-wrap gap-3 mb-2">
+                    {(ws.partner_logos || []).map((logo: string, idx: number) => (
+                      <div key={idx} className="relative group">
+                        <img src={logo} alt="Partner" className="w-14 h-14 object-contain rounded border border-border bg-background p-1" />
+                        <button onClick={() => removePartnerLogo(ws.id, logo)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer bg-secondary text-secondary-foreground px-3 py-2 rounded-md text-sm">
+                    <ImagePlus className="w-4 h-4" /> Add Partner Logo
+                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && addPartnerLogo(ws.id, e.target.files[0])} />
                   </label>
                 </div>
 
@@ -438,6 +498,8 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
     const ws = workshops.find(w => w.id === workshopId);
     if (!ws) return;
     try {
+      const verificationCode = generatePresenterVerifCode();
+      const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
       const { certificateText } = await generateCertificateText({
         presenterName: presenter.name,
         workshopTitle: ws.title,
@@ -446,6 +508,17 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
         companyName: company?.company_name || 'Wildlife UK',
         type: 'presenter',
       });
+      try {
+        await saveCertificateVerification({
+          verificationCode,
+          participantName: presenter.name,
+          workshopId: ws.id,
+          workshopTitle: ws.title,
+          workshopDate: ws.date,
+          certificateType: 'presenter',
+          companyName: company?.company_name || 'Wildlife UK',
+        });
+      } catch (e) { console.warn('Verification save failed'); }
       await generateCertificatePDF({
         certificateText,
         presenterName: presenter.name,
@@ -455,13 +528,23 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
         signatureUrl: company?.director_signature_url,
         companyName: company?.company_name || 'Wildlife UK',
         companyLogoUrl: company?.logo_url,
+        partnerLogos: ws.partner_logos || [],
         type: 'presenter',
+        verificationCode,
+        verificationUrl,
       });
       toast({ title: 'Certificate downloaded!' });
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' });
     }
   };
+
+  function generatePresenterVerifCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'WK-';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
 
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
 

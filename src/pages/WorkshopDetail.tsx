@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, registerForWorkshop, getCompanySettings } from '@/lib/api';
+import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, registerForWorkshop, getCompanySettings, saveCertificateVerification } from '@/lib/api';
 import { generateGoogleCalendarUrl, generateICSFile } from '@/lib/calendar';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
@@ -77,6 +77,8 @@ const WorkshopDetail = () => {
     }
     setCertLoading(true);
     try {
+      const verificationCode = generateVerificationCode();
+      const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
       const { certificateText } = await generateCertificateText({
         participantName: participant.full_name,
         workshopTitle: workshop.title,
@@ -87,6 +89,20 @@ const WorkshopDetail = () => {
         companyLogoUrl: company?.logo_url,
         type: 'participant',
       });
+      // Save verification record
+      try {
+        await saveCertificateVerification({
+          verificationCode,
+          participantName: participant.full_name,
+          workshopId: workshop.id,
+          workshopTitle: workshop.title,
+          workshopDate: workshop.date,
+          certificateType: 'participant',
+          companyName: company?.company_name || 'Wildlife UK',
+        });
+      } catch (e) {
+        console.warn('Verification save failed, continuing with certificate');
+      }
       await generateCertificatePDF({
         certificateText,
         participantName: participant.full_name,
@@ -96,7 +112,10 @@ const WorkshopDetail = () => {
         signatureUrl: company?.director_signature_url || workshop.presenters?.signature_url,
         companyName: company?.company_name || 'Wildlife UK',
         companyLogoUrl: company?.logo_url,
+        partnerLogos: workshop.partner_logos || [],
         type: 'participant',
+        verificationCode,
+        verificationUrl,
       });
       toast({ title: 'Certificate downloaded!' });
     } catch (e: any) {
@@ -104,6 +123,13 @@ const WorkshopDetail = () => {
     }
     setCertLoading(false);
   };
+
+  function generateVerificationCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'WK-';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
   if (!workshop) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Workshop not found</div>;
