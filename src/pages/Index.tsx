@@ -11,88 +11,88 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getWorkshops(), getCompanySettings()])
-      .then(([ws, cs]) => {
-        setWorkshops(ws || []);
-        setCompany(cs);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    Promise.all([getWorkshops(), getCompanySettings()]).
+    then(([ws, cs]) => {
+      setWorkshops(ws || []);
+      setCompany(cs);
+    }).
+    catch(console.error).
+    finally(() => setLoading(false));
   }, []);
 
-  const upcoming = workshops.filter(w => !w.is_completed && new Date(w.date) >= new Date());
-  const past = workshops.filter(w => w.is_completed || new Date(w.date) < new Date());
+  const upcoming = workshops.filter((w) => !w.is_completed && new Date(w.date) >= new Date());
+  const past = workshops.filter((w) => w.is_completed || new Date(w.date) < new Date());
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero - no separate header/footer, just hero section */}
-      <div className="bg-gradient-forest py-20 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          {company?.logo_url && (
-            <motion.img
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              src={company.logo_url}
-              alt="Logo"
-              className="w-20 h-20 mx-auto mb-6 rounded-xl object-contain bg-primary-foreground/10 p-2"
-            />
-          )}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-display font-bold text-primary-foreground mb-4"
-          >
-            {company?.company_name || 'Wildlife UK'} Workshops
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-primary-foreground/80 max-w-2xl mx-auto"
-          >
-            Join our expert-led workshops, access recordings & materials, and receive certificates of participation.
-          </motion.p>
-        </div>
-      </div>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       <main className="max-w-5xl mx-auto px-6 py-12">
-        {loading ? (
-          <div className="text-center py-20 text-muted-foreground">Loading workshops...</div>
-        ) : (
-          <>
+        {loading ?
+        <div className="text-center py-20 text-muted-foreground">Loading workshops...</div> :
+
+        <>
             {/* Upcoming */}
             <section className="mb-16">
               <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
                 <Calendar className="w-6 h-6 text-accent" />
                 Upcoming Workshops
               </h2>
-              {upcoming.length === 0 ? (
-                <p className="text-muted-foreground bg-muted rounded-lg p-8 text-center">
+              {upcoming.length === 0 ?
+            <p className="text-muted-foreground bg-muted rounded-lg p-8 text-center">
                   No upcoming workshops at the moment. Check back soon!
-                </p>
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2">
-                  {upcoming.map((w, i) => (
-                    <WorkshopCard key={w.id} workshop={w} index={i} />
-                  ))}
-                </div>
+                </p> :
+
+            <div className="grid gap-6 md:grid-cols-2">
+                  {upcoming.map((w, i) =>
+              <WorkshopCard key={w.id} workshop={w} index={i} />
               )}
+                </div>
+            }
             </section>
 
             {/* Past */}
-            {past.length > 0 && (
-              <section>
+            {past.length > 0 &&
+          <section>
                 <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
                   <Clock className="w-6 h-6 text-accent" />
                   Past Workshops
                 </h2>
                 <div className="grid gap-6 md:grid-cols-2">
-                  {past.map((w, i) => (
-                    <WorkshopCard key={w.id} workshop={w} index={i} isPast />
-                  ))}
+                  {past.map((w, i) =>
+              <WorkshopCard key={w.id} workshop={w} index={i} isPast />
+              )}
                 </div>
               </section>
-            )}
+          }
 
             {/* Verify link */}
             <section className="mt-12 text-center">
@@ -101,30 +101,30 @@ const Index = () => {
               </Link>
             </section>
           </>
-        )}
+        }
       </main>
 
-    </div>
-  );
+    </div>);
+
 };
 
-function WorkshopCard({ workshop, index, isPast }: { workshop: any; index: number; isPast?: boolean }) {
+function WorkshopCard({ workshop, index, isPast }: {workshop: any;index: number;isPast?: boolean;}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-    >
+      transition={{ delay: index * 0.1 }}>
+
       <Link
         to={`/workshop/${workshop.id}`}
-        className="block bg-card border border-border rounded-lg p-6 hover:shadow-forest transition-all duration-300 group"
-      >
+        className="block bg-card border border-border rounded-lg p-6 hover:shadow-forest transition-all duration-300 group">
+
         <div className="flex items-start justify-between mb-3">
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            isPast
-              ? 'bg-muted text-muted-foreground'
-              : 'bg-accent/20 text-accent-foreground'
-          }`}>
+          isPast ?
+          'bg-muted text-muted-foreground' :
+          'bg-accent/20 text-accent-foreground'}`
+          }>
             {isPast ? 'Completed' : 'Upcoming'}
           </span>
           <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
@@ -132,30 +132,30 @@ function WorkshopCard({ workshop, index, isPast }: { workshop: any; index: numbe
         <h3 className="text-lg font-display font-semibold text-foreground mb-2 group-hover:text-forest-light transition-colors">
           {workshop.title}
         </h3>
-        {workshop.description && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{workshop.description}</p>
-        )}
+        {workshop.description &&
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{workshop.description}</p>
+        }
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
             {format(new Date(workshop.date), 'dd MMM yyyy, HH:mm')}
           </span>
-          {workshop.location && (
-            <span className="flex items-center gap-1">
+          {workshop.location &&
+          <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" />
               {workshop.location}
             </span>
-          )}
-          {workshop.presenters?.name && (
-            <span className="flex items-center gap-1">
+          }
+          {workshop.presenters?.name &&
+          <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               {workshop.presenters.name}
             </span>
-          )}
+          }
         </div>
       </Link>
-    </motion.div>
-  );
+    </motion.div>);
+
 }
 
 export default Index;
