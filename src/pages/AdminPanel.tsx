@@ -45,7 +45,7 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground px-6 py-4 flex items-center justify-between">
+      <div className="bg-primary text-primary-foreground px-6 py-4 flex items-center justify-between">
         <h1 className="font-display font-bold text-lg">Admin Panel</h1>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 gap-1">
@@ -55,12 +55,12 @@ const AdminPanel = () => {
             <LogOut className="w-4 h-4" /> Logout
           </Button>
         </div>
-      </header>
+      </div>
 
       <div className="flex border-b border-border bg-card">
         {(['workshops', 'presenters', 'settings'] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)} className={`px-6 py-3 text-sm font-medium capitalize transition-colors ${tab === t ? 'border-b-2 border-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-            {t}
+            {t === 'workshops' ? 'Events' : t}
           </button>
         ))}
       </div>
@@ -81,7 +81,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '' });
+  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -127,21 +127,26 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
 
   const saveWorkshop = async () => {
     try {
-      const data = {
-        ...form,
+      const data: any = {
+        title: form.title,
+        description: form.description || null,
+        date: form.date,
         duration_minutes: Number(form.duration_minutes),
         max_participants: form.max_participants ? Number(form.max_participants) : null,
         presenter_id: form.presenter_id || null,
+        location: form.location || null,
+        event_type: form.event_type,
+        timeline: form.timeline || null,
       };
       if (editId) {
         await adminRequest('update', 'workshops', data, editId, undefined, adminPwd);
       } else {
         await adminRequest('insert', 'workshops', data, undefined, undefined, adminPwd);
       }
-      toast({ title: editId ? 'Workshop updated' : 'Workshop created' });
+      toast({ title: editId ? 'Event updated' : 'Event created' });
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '' });
+      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' });
       load();
     } catch (e: any) {
       toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
@@ -149,7 +154,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const deleteWorkshop = async (id: string) => {
-    if (!confirm('Delete this workshop?')) return;
+    if (!confirm('Delete this event?')) return;
     try {
       await adminRequest('delete', 'workshops', undefined, id, undefined, adminPwd);
       toast({ title: 'Deleted' });
@@ -209,36 +214,39 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
-  const generateParticipantCert = async (participant: any) => {
+  const generateCert = async (name: string, type: 'participant' | 'presenter') => {
     const ws = workshops.find(w => w.id === selectedWorkshop);
     if (!ws) return;
     const presenter = presenters.find(p => p.id === ws.presenter_id);
     try {
       const verificationCode = generateVerificationCode();
       const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
-      const { certificateText } = await generateCertificateText({
-        participantName: participant.full_name,
+      const params: any = {
         workshopTitle: ws.title,
         workshopDate: ws.date,
         presenterName: presenter?.name || 'Presenter',
         signerName: company?.director_name || presenter?.name || 'Director',
         companyName: company?.company_name || 'Wildlife UK',
-        type: 'participant',
-      });
+        type,
+      };
+      if (type === 'participant') params.participantName = name;
+      else params.presenterName = name;
+      const { certificateText } = await generateCertificateText(params);
       try {
         await saveCertificateVerification({
           verificationCode,
-          participantName: participant.full_name,
+          participantName: name,
           workshopId: ws.id,
           workshopTitle: ws.title,
           workshopDate: ws.date,
-          certificateType: 'participant',
+          certificateType: type,
           companyName: company?.company_name || 'Wildlife UK',
         });
       } catch (e) { console.warn('Verification save failed'); }
       await generateCertificatePDF({
         certificateText,
-        participantName: participant.full_name,
+        participantName: type === 'participant' ? name : undefined,
+        presenterName: type === 'presenter' ? name : undefined,
         workshopTitle: ws.title,
         workshopDate: ws.date,
         signerName: company?.director_name || presenter?.name || 'Director',
@@ -246,7 +254,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         companyName: company?.company_name || 'Wildlife UK',
         companyLogoUrl: company?.logo_url,
         partnerLogos: ws.partner_logos || [],
-        type: 'participant',
+        type,
         verificationCode,
         verificationUrl,
       });
@@ -289,9 +297,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-display font-bold text-foreground">Workshops</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '' }); }} className="bg-accent text-accent-foreground gap-1">
-          <Plus className="w-4 h-4" /> Add Workshop
+        <h2 className="text-xl font-display font-bold text-foreground">Events</h2>
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' }); }} className="bg-accent text-accent-foreground gap-1">
+          <Plus className="w-4 h-4" /> Add Event
         </Button>
       </div>
 
@@ -299,12 +307,16 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         {showForm && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-card border border-border rounded-lg p-6 mb-6 overflow-hidden">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-display font-semibold">{editId ? 'Edit' : 'New'} Workshop</h3>
+              <h3 className="font-display font-semibold">{editId ? 'Edit' : 'New'} Event</h3>
               <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-muted-foreground" /></button>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               <Input type="datetime-local" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+              <select value={form.event_type} onChange={e => setForm(f => ({ ...f, event_type: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="workshop">Workshop</option>
+                <option value="webinar">Webinar</option>
+              </select>
               <Input placeholder="Duration (min)" type="number" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))} />
               <Input placeholder="Location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
               <select value={form.presenter_id} onChange={e => setForm(f => ({ ...f, presenter_id: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
@@ -313,7 +325,8 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
               </select>
               <Input placeholder="Max Participants (optional)" type="number" value={form.max_participants} onChange={e => setForm(f => ({ ...f, max_participants: e.target.value }))} />
             </div>
-            <Textarea placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-4" />
+            <Textarea placeholder="Description (use **bold** and line breaks for formatting)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-4" rows={4} />
+            <Textarea placeholder="Timeline / Programme (optional — use line breaks for each item)" value={form.timeline} onChange={e => setForm(f => ({ ...f, timeline: e.target.value }))} className="mt-4" rows={4} />
             <Button onClick={saveWorkshop} className="mt-4 bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
           </motion.div>
         )}
@@ -329,12 +342,15 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${ws.is_completed ? 'bg-muted text-muted-foreground' : 'bg-accent/20 text-accent-foreground'}`}>
                     {ws.is_completed ? 'Completed' : 'Upcoming'}
                   </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                    {ws.event_type === 'webinar' ? 'Webinar' : 'Workshop'}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">{format(new Date(ws.date), 'dd MMM yyyy HH:mm')} · {ws.location || 'No location'}</p>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => toggleComplete(ws)} className="text-xs">{ws.is_completed ? 'Reopen' : 'Complete'}</Button>
-                <Button variant="ghost" size="sm" onClick={() => { setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_id: ws.presenter_id || '', max_participants: ws.max_participants?.toString() || '' }); setShowForm(true); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_id: ws.presenter_id || '', max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '' }); setShowForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => deleteWorkshop(ws.id)} className="text-destructive hover:text-destructive">
@@ -393,6 +409,21 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   </label>
                 </div>
 
+                {/* Presenter Certificate */}
+                {ws.is_completed && ws.presenter_id && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Award className="w-4 h-4 text-accent" /> Presenter Certificate</h4>
+                    {(() => {
+                      const presenter = presenters.find(p => p.id === ws.presenter_id);
+                      return presenter ? (
+                        <Button variant="outline" size="sm" onClick={() => generateCert(presenter.name, 'presenter')} className="text-xs gap-1">
+                          <Award className="w-3.5 h-3.5" /> {presenter.name}'s Certificate
+                        </Button>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+
                 {/* Participants */}
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Users className="w-4 h-4 text-accent" /> Participants ({participants.length})</h4>
@@ -404,7 +435,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                         <div key={p.id} className="flex items-center justify-between text-sm py-1">
                           <span className="text-foreground">{p.full_name} <span className="text-muted-foreground text-xs">({p.email})</span></span>
                           {ws.is_completed && (
-                            <Button variant="ghost" size="sm" onClick={() => generateParticipantCert(p)} className="text-xs gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => generateCert(p.full_name, 'participant')} className="text-xs gap-1">
                               <Award className="w-3.5 h-3.5" /> Certificate
                             </Button>
                           )}
