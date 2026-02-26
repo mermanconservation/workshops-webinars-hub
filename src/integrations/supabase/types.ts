@@ -226,12 +226,14 @@ export type Database = {
           date: string
           description: string | null
           duration_minutes: number
+          event_type: string
           id: string
           is_completed: boolean
           location: string | null
           max_participants: number | null
           partner_logos: string[] | null
           presenter_id: string | null
+          timeline: string | null
           title: string
           updated_at: string
         }
@@ -240,12 +242,14 @@ export type Database = {
           date: string
           description?: string | null
           duration_minutes?: number
+          event_type?: string
           id?: string
           is_completed?: boolean
           location?: string | null
           max_participants?: number | null
           partner_logos?: string[] | null
           presenter_id?: string | null
+          timeline?: string | null
           title: string
           updated_at?: string
         }
@@ -254,12 +258,14 @@ export type Database = {
           date?: string
           description?: string | null
           duration_minutes?: number
+          event_type?: string
           id?: string
           is_completed?: boolean
           location?: string | null
           max_participants?: number | null
           partner_logos?: string[] | null
           presenter_id?: string | null
+          timeline?: string | null
           title?: string
           updated_at?: string
         }

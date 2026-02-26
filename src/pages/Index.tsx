@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Waves } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Monitor, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getWorkshops, getCompanySettings } from '@/lib/api';
 import { format } from 'date-fns';
@@ -23,6 +23,11 @@ const Index = () => {
   const upcoming = workshops.filter((w) => !w.is_completed && new Date(w.date) >= new Date());
   const past = workshops.filter((w) => w.is_completed || new Date(w.date) < new Date());
 
+  const upcomingWorkshops = upcoming.filter(w => w.event_type !== 'webinar');
+  const upcomingWebinars = upcoming.filter(w => w.event_type === 'webinar');
+  const pastWorkshops = past.filter(w => w.event_type !== 'webinar');
+  const pastWebinars = past.filter(w => w.event_type === 'webinar');
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
@@ -35,8 +40,8 @@ const Index = () => {
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">
               {company?.company_name || 'Workshop Hub'}
             </h1>
-            <p className="text-primary-foreground/75 max-w-xl text-sm md:text-base leading-relaxed">
-              {company?.additional_details || 'Professional workshops and training programmes. Explore our upcoming sessions or browse past workshops with recordings and materials.'}
+            <p className="text-primary-foreground/75 max-w-xl text-sm md:text-base leading-relaxed whitespace-pre-line">
+              {company?.additional_details || 'Professional workshops, webinars and training programmes. Explore our upcoming sessions or browse past events with recordings and materials.'}
             </p>
           </motion.div>
         </div>
@@ -44,41 +49,38 @@ const Index = () => {
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         {loading ? (
-          <div className="text-center py-20 text-muted-foreground">Loading workshops...</div>
+          <div className="text-center py-20 text-muted-foreground">Loading events...</div>
         ) : (
           <>
-            {/* Upcoming */}
-            <section className="mb-16">
-              <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-accent" />
-                Upcoming Workshops
-              </h2>
-              {upcoming.length === 0 ? (
-                <p className="text-muted-foreground bg-muted rounded-lg p-8 text-center">
-                  No upcoming workshops at the moment. Check back soon!
-                </p>
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2">
-                  {upcoming.map((w, i) => (
-                    <WorkshopCard key={w.id} workshop={w} index={i} />
-                  ))}
-                </div>
-              )}
-            </section>
+            {/* Upcoming Workshops */}
+            {upcomingWorkshops.length > 0 && (
+              <EventSection title="Upcoming Workshops" icon={<Wrench className="w-6 h-6 text-accent" />} events={upcomingWorkshops} />
+            )}
 
-            {/* Past */}
-            {past.length > 0 && (
-              <section>
+            {/* Upcoming Webinars */}
+            {upcomingWebinars.length > 0 && (
+              <EventSection title="Upcoming Webinars" icon={<Monitor className="w-6 h-6 text-accent" />} events={upcomingWebinars} />
+            )}
+
+            {upcoming.length === 0 && (
+              <section className="mb-16">
                 <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
-                  <Clock className="w-6 h-6 text-accent" />
-                  Past Workshops
+                  <Calendar className="w-6 h-6 text-accent" /> Upcoming Events
                 </h2>
-                <div className="grid gap-6 md:grid-cols-2">
-                  {past.map((w, i) => (
-                    <WorkshopCard key={w.id} workshop={w} index={i} isPast />
-                  ))}
-                </div>
+                <p className="text-muted-foreground bg-muted rounded-lg p-8 text-center">
+                  No upcoming events at the moment. Check back soon!
+                </p>
               </section>
+            )}
+
+            {/* Past Workshops */}
+            {pastWorkshops.length > 0 && (
+              <EventSection title="Past Workshops" icon={<Wrench className="w-6 h-6 text-accent" />} events={pastWorkshops} isPast />
+            )}
+
+            {/* Past Webinars */}
+            {pastWebinars.length > 0 && (
+              <EventSection title="Past Webinars" icon={<Monitor className="w-6 h-6 text-accent" />} events={pastWebinars} isPast />
             )}
 
             {/* Verify link */}
@@ -94,7 +96,23 @@ const Index = () => {
   );
 };
 
+function EventSection({ title, icon, events, isPast }: { title: string; icon: React.ReactNode; events: any[]; isPast?: boolean }) {
+  return (
+    <section className="mb-16">
+      <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
+        {icon} {title}
+      </h2>
+      <div className="grid gap-6 md:grid-cols-2">
+        {events.map((w, i) => (
+          <WorkshopCard key={w.id} workshop={w} index={i} isPast={isPast} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WorkshopCard({ workshop, index, isPast }: { workshop: any; index: number; isPast?: boolean }) {
+  const isWebinar = workshop.event_type === 'webinar';
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -106,13 +124,16 @@ function WorkshopCard({ workshop, index, isPast }: { workshop: any; index: numbe
         className="block bg-card border border-border rounded-lg p-6 hover:shadow-forest transition-all duration-300 group"
       >
         <div className="flex items-start justify-between mb-3">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            isPast
-              ? 'bg-muted text-muted-foreground'
-              : 'bg-accent/20 text-accent-foreground'
-          }`}>
-            {isPast ? 'Completed' : 'Upcoming'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              isPast ? 'bg-muted text-muted-foreground' : 'bg-accent/20 text-accent-foreground'
+            }`}>
+              {isPast ? 'Completed' : 'Upcoming'}
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+              {isWebinar ? 'Webinar' : 'Workshop'}
+            </span>
+          </div>
           <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
         </div>
         <h3 className="text-lg font-display font-semibold text-foreground mb-2 group-hover:text-forest-light transition-colors">

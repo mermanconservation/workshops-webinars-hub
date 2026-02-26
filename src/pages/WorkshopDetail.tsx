@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, registerForWorkshop, getCompanySettings, saveCertificateVerification } from '@/lib/api';
@@ -25,6 +25,7 @@ const WorkshopDetail = () => {
   const [registering, setRegistering] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [certEmail, setCertEmail] = useState('');
+  const [presenterCertLoading, setPresenterCertLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -77,51 +78,70 @@ const WorkshopDetail = () => {
     }
     setCertLoading(true);
     try {
-      const verificationCode = generateVerificationCode();
-      const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
-      const { certificateText } = await generateCertificateText({
-        participantName: participant.full_name,
-        workshopTitle: workshop.title,
-        workshopDate: workshop.date,
-        presenterName: workshop.presenters?.name || 'Presenter',
-        signerName: company?.director_name || workshop.presenters?.name || 'Director',
-        companyName: company?.company_name || 'Wildlife UK',
-        companyLogoUrl: company?.logo_url,
-        type: 'participant',
-      });
-      // Save verification record
-      try {
-        await saveCertificateVerification({
-          verificationCode,
-          participantName: participant.full_name,
-          workshopId: workshop.id,
-          workshopTitle: workshop.title,
-          workshopDate: workshop.date,
-          certificateType: 'participant',
-          companyName: company?.company_name || 'Wildlife UK',
-        });
-      } catch (e) {
-        console.warn('Verification save failed, continuing with certificate');
-      }
-      await generateCertificatePDF({
-        certificateText,
-        participantName: participant.full_name,
-        workshopTitle: workshop.title,
-        workshopDate: workshop.date,
-        signerName: company?.director_name || workshop.presenters?.name || 'Director',
-        signatureUrl: company?.director_signature_url || workshop.presenters?.signature_url,
-        companyName: company?.company_name || 'Wildlife UK',
-        companyLogoUrl: company?.logo_url,
-        partnerLogos: workshop.partner_logos || [],
-        type: 'participant',
-        verificationCode,
-        verificationUrl,
-      });
+      await downloadCertificate(participant.full_name, 'participant');
       toast({ title: 'Certificate downloaded!' });
     } catch (e: any) {
       toast({ title: 'Certificate generation failed', description: e.message, variant: 'destructive' });
     }
     setCertLoading(false);
+  };
+
+  const handlePresenterCertificate = async () => {
+    if (!workshop?.presenters?.name) return;
+    setPresenterCertLoading(true);
+    try {
+      await downloadCertificate(workshop.presenters.name, 'presenter');
+      toast({ title: 'Presenter certificate downloaded!' });
+    } catch (e: any) {
+      toast({ title: 'Certificate generation failed', description: e.message, variant: 'destructive' });
+    }
+    setPresenterCertLoading(false);
+  };
+
+  const downloadCertificate = async (name: string, type: 'participant' | 'presenter') => {
+    const verificationCode = generateVerificationCode();
+    const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
+    const params: any = {
+      workshopTitle: workshop.title,
+      workshopDate: workshop.date,
+      presenterName: workshop.presenters?.name || 'Presenter',
+      signerName: company?.director_name || workshop.presenters?.name || 'Director',
+      companyName: company?.company_name || 'Wildlife UK',
+      companyLogoUrl: company?.logo_url,
+      type,
+    };
+    if (type === 'participant') params.participantName = name;
+    else params.presenterName = name;
+
+    const { certificateText } = await generateCertificateText(params);
+    try {
+      await saveCertificateVerification({
+        verificationCode,
+        participantName: name,
+        workshopId: workshop.id,
+        workshopTitle: workshop.title,
+        workshopDate: workshop.date,
+        certificateType: type,
+        companyName: company?.company_name || 'Wildlife UK',
+      });
+    } catch (e) {
+      console.warn('Verification save failed, continuing with certificate');
+    }
+    await generateCertificatePDF({
+      certificateText,
+      participantName: type === 'participant' ? name : undefined,
+      presenterName: type === 'presenter' ? name : undefined,
+      workshopTitle: workshop.title,
+      workshopDate: workshop.date,
+      signerName: company?.director_name || workshop.presenters?.name || 'Director',
+      signatureUrl: company?.director_signature_url || workshop.presenters?.signature_url,
+      companyName: company?.company_name || 'Wildlife UK',
+      companyLogoUrl: company?.logo_url,
+      partnerLogos: workshop.partner_logos || [],
+      type,
+      verificationCode,
+      verificationUrl,
+    });
   };
 
   function generateVerificationCode() {
@@ -132,18 +152,23 @@ const WorkshopDetail = () => {
   }
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
-  if (!workshop) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Workshop not found</div>;
+  if (!workshop) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Event not found</div>;
 
   const isPast = workshop.is_completed || new Date(workshop.date) < new Date();
   const isUpcoming = !isPast;
+  const isWebinar = workshop.event_type === 'webinar';
+  const eventLabel = isWebinar ? 'Webinar' : 'Workshop';
 
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-gradient-forest py-12 px-6">
         <div className="max-w-4xl mx-auto">
           <Link to="/" className="inline-flex items-center gap-1 text-primary-foreground/70 hover:text-primary-foreground mb-4 text-sm transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Back to workshops
+            <ArrowLeft className="w-4 h-4" /> Back to dashboard
           </Link>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-white/20 text-primary-foreground font-semibold">{eventLabel}</span>
+          </div>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-3">
             {workshop.title}
           </motion.h1>
@@ -157,10 +182,20 @@ const WorkshopDetail = () => {
       </div>
 
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-10">
-        {/* Description */}
+        {/* Description - rendered with formatting */}
         {workshop.description && (
           <section>
-            <p className="text-foreground leading-relaxed">{workshop.description}</p>
+            <div className="text-foreground leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatDescription(workshop.description) }} />
+          </section>
+        )}
+
+        {/* Timeline / Programme */}
+        {workshop.timeline && (
+          <section className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+              <ListOrdered className="w-5 h-5 text-accent" /> Programme / Timeline
+            </h2>
+            <div className="text-foreground leading-relaxed whitespace-pre-wrap text-sm" dangerouslySetInnerHTML={{ __html: formatDescription(workshop.timeline) }} />
           </section>
         )}
 
@@ -184,7 +219,7 @@ const WorkshopDetail = () => {
                 <Input placeholder="Full Name" value={regName} onChange={e => setRegName(e.target.value)} />
                 <Input placeholder="Email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} />
                 <Button onClick={handleRegister} disabled={registering} className="w-full bg-accent text-accent-foreground hover:opacity-90">
-                  {registering ? 'Registering...' : 'Join Workshop'}
+                  {registering ? 'Registering...' : `Join ${eventLabel}`}
                 </Button>
               </div>
             </div>
@@ -195,7 +230,7 @@ const WorkshopDetail = () => {
         {videos.length > 0 && (
           <section>
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
-              <Play className="w-5 h-5 text-accent" /> Workshop Recordings
+              <Play className="w-5 h-5 text-accent" /> Recordings
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
               {videos.map(v => {
@@ -204,12 +239,7 @@ const WorkshopDetail = () => {
                   <div key={v.id} className="bg-card border border-border rounded-lg overflow-hidden">
                     {videoId && (
                       <div className="aspect-video">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${videoId}`}
-                          className="w-full h-full"
-                          allowFullScreen
-                          title={v.title || 'Workshop video'}
-                        />
+                        <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen title={v.title || 'Video'} />
                       </div>
                     )}
                     {v.title && <p className="p-3 text-sm font-medium text-foreground">{v.title}</p>}
@@ -238,14 +268,46 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Certificate section for completed workshops */}
+        {/* Participants list */}
+        {participants.length > 0 && (
+          <section className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-accent" /> Participants ({participants.length})
+            </h2>
+            <div className="grid gap-1">
+              {participants.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                  <span className="text-xs text-muted-foreground w-6 text-right">{i + 1}.</span>
+                  <span className="text-sm text-foreground">{p.full_name}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Presenter Certificate for completed events */}
+        {isPast && workshop.presenters?.name && (
+          <section className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-accent" /> Presenter Certificate
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Download your certificate of presentation for this {eventLabel.toLowerCase()}.
+            </p>
+            <Button onClick={handlePresenterCertificate} disabled={presenterCertLoading} className="bg-accent text-accent-foreground hover:opacity-90">
+              {presenterCertLoading ? 'Generating...' : `Download ${workshop.presenters.name}'s Certificate`}
+            </Button>
+          </section>
+        )}
+
+        {/* Participant Certificate section for completed events */}
         {isPast && participants.length > 0 && (
           <section className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
               🏅 Download Your Certificate
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Enter the email you registered with to download your AI-generated certificate of participation.
+              Enter the email you registered with to download your certificate of participation.
             </p>
             <div className="flex gap-3 max-w-md">
               <Input placeholder="Your registered email" type="email" value={certEmail} onChange={e => setCertEmail(e.target.value)} />
@@ -259,6 +321,13 @@ const WorkshopDetail = () => {
     </div>
   );
 };
+
+function formatDescription(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br/>');
+}
 
 function extractYoutubeId(url: string): string | null {
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/);
