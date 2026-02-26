@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldX, Search } from 'lucide-react';
+import { ShieldCheck, ShieldX, Search, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { verifyCertificate } from '@/lib/api';
@@ -28,17 +28,24 @@ const VerifyCertificate = () => {
   };
 
   // Auto-verify if code in URL
-  const initialCode = searchParams.get('code');
-  useState(() => {
+  useEffect(() => {
+    const initialCode = searchParams.get('code');
     if (initialCode) {
       setLoading(true);
-      verifyCertificate(initialCode).then(setResult).catch(() => setNotFound(true)).finally(() => setLoading(false));
+      verifyCertificate(initialCode)
+        .then(setResult)
+        .catch(() => setNotFound(true))
+        .finally(() => setLoading(false));
     }
-  });
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg">
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to dashboard
+        </Link>
+
         <div className="text-center mb-8">
           <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-accent" />
           <h1 className="text-2xl font-display font-bold text-foreground">Certificate Verification</h1>

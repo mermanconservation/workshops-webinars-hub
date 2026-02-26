@@ -26,27 +26,23 @@ export async function generateCertificatePDF(data: CertificateData) {
   const width = pdf.internal.pageSize.getWidth();
   const height = pdf.internal.pageSize.getHeight();
 
-  // Background - soft white
+  // Background
   pdf.setFillColor(252, 253, 255);
   pdf.rect(0, 0, width, height, 'F');
 
   // Ocean blue border - double line
-  pdf.setDrawColor(15, 76, 129); // deep ocean blue
+  pdf.setDrawColor(15, 76, 129);
   pdf.setLineWidth(2.5);
   pdf.rect(8, 8, width - 16, height - 16);
-  pdf.setDrawColor(56, 149, 211); // lighter ocean blue
+  pdf.setDrawColor(56, 149, 211);
   pdf.setLineWidth(0.8);
   pdf.rect(12, 12, width - 24, height - 24);
 
-  // Subtle wave decoration at top
+  // Subtle decorative lines at top
   pdf.setDrawColor(56, 149, 211);
-  pdf.setLineWidth(0.3);
   for (let i = 0; i < 3; i++) {
     const y = 16 + i * 1.5;
-    const alpha = 1 - i * 0.3;
-    pdf.setDrawColor(56, 149, 211);
-    pdf.setLineWidth(0.3 * alpha);
-    // Simple decorative horizontal line
+    pdf.setLineWidth(0.3 * (1 - i * 0.3));
     pdf.line(20, y, width - 20, y);
   }
 
@@ -127,39 +123,18 @@ export async function generateCertificatePDF(data: CertificateData) {
     day: 'numeric', month: 'long', year: 'numeric'
   }), width / 2, yPos, { align: 'center' });
 
-  // Signature section at bottom
-  const sigY = height - 45;
+  // === BOTTOM SECTION ===
+  const bottomY = height - 40;
 
-  if (data.signatureUrl) {
-    try {
-      const sigImg = await loadImage(data.signatureUrl);
-      pdf.addImage(sigImg, 'PNG', width / 2 - 20, sigY - 15, 40, 15);
-    } catch (e) {
-      console.warn('Could not load signature');
-    }
-  }
-
-  pdf.setDrawColor(15, 76, 129);
-  pdf.setLineWidth(0.4);
-  pdf.line(width / 2 - 35, sigY + 2, width / 2 + 35, sigY + 2);
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(10);
-  pdf.setTextColor(15, 76, 129);
-  pdf.text(data.signerName, width / 2, sigY + 8, { align: 'center' });
-
-  // Partner logos row at bottom
+  // BOTTOM-LEFT: Partner logos
   const partnerLogos = (data.partnerLogos || []).filter(Boolean);
   if (partnerLogos.length > 0) {
-    const logoY = height - 28;
     const logoSize = 14;
-    const totalWidth = partnerLogos.length * (logoSize + 6) - 6;
-    let logoX = width / 2 - totalWidth / 2;
-
+    let logoX = 20;
     for (const logoUrl of partnerLogos) {
       try {
         const img = await loadImage(logoUrl);
-        pdf.addImage(img, 'PNG', logoX, logoY, logoSize, logoSize);
+        pdf.addImage(img, 'PNG', logoX, bottomY - 5, logoSize, logoSize);
       } catch (e) {
         console.warn('Could not load partner logo');
       }
@@ -167,18 +142,44 @@ export async function generateCertificatePDF(data: CertificateData) {
     }
   }
 
-  // Verification code at bottom-right
+  // BOTTOM-RIGHT: Signature + date
+  const sigX = width - 55;
+  if (data.signatureUrl) {
+    try {
+      const sigImg = await loadImage(data.signatureUrl);
+      pdf.addImage(sigImg, 'PNG', sigX - 5, bottomY - 18, 40, 15);
+    } catch (e) {
+      console.warn('Could not load signature');
+    }
+  }
+
+  pdf.setDrawColor(15, 76, 129);
+  pdf.setLineWidth(0.4);
+  pdf.line(sigX - 10, bottomY, sigX + 40, bottomY);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(10);
+  pdf.setTextColor(15, 76, 129);
+  pdf.text(data.signerName, sigX + 15, bottomY + 6, { align: 'center' });
+
+  // Date of signature below signer name
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 100, 100);
+  pdf.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), sigX + 15, bottomY + 11, { align: 'center' });
+
+  // Verification code inside frame (bottom center)
   if (data.verificationCode) {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(150, 150, 150);
-    pdf.text(`Verify: ${data.verificationCode}`, width - 15, height - 13, { align: 'right' });
+    pdf.text(`Verify: ${data.verificationCode}`, width / 2, height - 17, { align: 'center' });
     if (data.verificationUrl) {
-      pdf.text(data.verificationUrl, width - 15, height - 10, { align: 'right' });
+      pdf.text(data.verificationUrl, width / 2, height - 14, { align: 'center' });
     }
   }
 
-  // Bottom decorative wave lines
+  // Bottom decorative lines
   pdf.setDrawColor(56, 149, 211);
   for (let i = 0; i < 3; i++) {
     const y = height - 16 - i * 1.5;
