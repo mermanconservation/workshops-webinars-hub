@@ -1,7 +1,1 @@
-project_id = "hervpoctyfeozcueubhn"
-
-[functions.admin-operations]
-verify_jwt = false
-
-[functions.generate-certificate]
-verify_jwt = false
+project_id = "mazszkmjrynmmknckllf"
