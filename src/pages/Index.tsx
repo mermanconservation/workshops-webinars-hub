@@ -34,14 +34,11 @@ const Index = () => {
       <div className="bg-gradient-forest text-primary-foreground py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            {company?.logo_url && (
-              <img src={company.logo_url} alt={company.company_name} className="w-16 h-16 object-contain mb-4 rounded-lg bg-white/10 p-1" />
-            )}
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">
-              {company?.company_name || 'Workshop Hub'}
+              Workshop & Webinars Hub
             </h1>
-            <p className="text-primary-foreground/75 max-w-xl text-sm md:text-base leading-relaxed whitespace-pre-line">
-              {company?.additional_details || 'Professional workshops, webinars and training programmes. Explore our upcoming sessions or browse past events with recordings and materials.'}
+            <p className="text-primary-foreground/75 max-w-xl text-sm md:text-base leading-relaxed">
+              Explore our upcoming sessions or browse past events with recordings, materials and certificates.
             </p>
           </motion.div>
         </div>
@@ -153,12 +150,18 @@ function WorkshopCard({ workshop, index, isPast }: { workshop: any; index: numbe
               {workshop.location}
             </span>
           )}
-          {workshop.presenters?.name && (
-            <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              {workshop.presenters.name}
-            </span>
-          )}
+          {(() => {
+            const presenterNames = (workshop.workshop_presenters || [])
+              .map((wp: any) => wp.presenters?.name)
+              .filter(Boolean)
+              .join(', ');
+            return presenterNames ? (
+              <span className="flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" />
+                {presenterNames}
+              </span>
+            ) : null;
+          })()}
         </div>
       </Link>
     </motion.div>

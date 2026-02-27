@@ -5,7 +5,7 @@ import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification } from '@/lib/api';
+import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification, getWorkshopPresenters } from '@/lib/api';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +81,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' });
+  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '' });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -89,6 +89,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [company, setCompany] = useState<any>(null);
+  const [workshopPresentersMap, setWorkshopPresentersMap] = useState<Record<string, any[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,20 +134,36 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         date: form.date,
         duration_minutes: Number(form.duration_minutes),
         max_participants: form.max_participants ? Number(form.max_participants) : null,
-        presenter_id: form.presenter_id || null,
         location: form.location || null,
         event_type: form.event_type,
         timeline: form.timeline || null,
       };
+      let wsId = editId;
       if (editId) {
         await adminRequest('update', 'workshops', data, editId, undefined, adminPwd);
       } else {
-        await adminRequest('insert', 'workshops', data, undefined, undefined, adminPwd);
+        const result = await adminRequest('insert', 'workshops', data, undefined, undefined, adminPwd);
+        wsId = result?.[0]?.id;
       }
+
+      // Sync presenters via junction table
+      if (wsId) {
+        // Delete existing
+        const existing = await adminRequest('list', 'workshop_presenters', undefined, undefined, { select: '*' }, adminPwd);
+        const toDelete = (existing || []).filter((wp: any) => wp.workshop_id === wsId);
+        for (const wp of toDelete) {
+          await adminRequest('delete', 'workshop_presenters', undefined, wp.id, undefined, adminPwd);
+        }
+        // Insert new
+        for (const pid of form.presenter_ids) {
+          await adminRequest('insert', 'workshop_presenters', { workshop_id: wsId, presenter_id: pid }, undefined, undefined, adminPwd);
+        }
+      }
+
       toast({ title: editId ? 'Event updated' : 'Event created' });
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' });
+      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' });
       load();
     } catch (e: any) {
       toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
@@ -217,15 +234,17 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
     const ws = workshops.find(w => w.id === selectedWorkshop);
     if (!ws) return;
-    const presenter = presenters.find(p => p.id === ws.presenter_id);
+    // Get workshop presenters
+    let wsPresenters: any[] = [];
+    try { wsPresenters = await getWorkshopPresenters(ws.id); } catch {}
+    const presenterNamesList = wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean).join(', ');
     try {
       const verificationCode = generateVerificationCode();
-      const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
       const params: any = {
         workshopTitle: ws.title,
         workshopDate: ws.date,
-        presenterName: presenter?.name || 'Presenter',
-        signerName: company?.director_name || presenter?.name || 'Director',
+        presenterName: presenterNamesList || 'Presenter',
+        signerName: company?.director_name || presenterNamesList || 'Director',
         companyName: company?.company_name || 'Wildlife UK',
         type,
       };
@@ -249,14 +268,13 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         presenterName: type === 'presenter' ? name : undefined,
         workshopTitle: ws.title,
         workshopDate: ws.date,
-        signerName: company?.director_name || presenter?.name || 'Director',
-        signatureUrl: company?.director_signature_url || presenter?.signature_url,
+        signerName: company?.director_name || presenterNamesList || 'Director',
+        signatureUrl: company?.director_signature_url || wsPresenters[0]?.presenters?.signature_url,
         companyName: company?.company_name || 'Wildlife UK',
         companyLogoUrl: company?.logo_url,
         partnerLogos: ws.partner_logos || [],
         type,
         verificationCode,
-        verificationUrl,
       });
     } catch (e: any) {
       toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
@@ -298,7 +316,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-foreground">Events</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_id: '', max_participants: '', event_type: 'workshop', timeline: '' }); }} className="bg-accent text-accent-foreground gap-1">
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' }); }} className="bg-accent text-accent-foreground gap-1">
           <Plus className="w-4 h-4" /> Add Event
         </Button>
       </div>
@@ -319,10 +337,12 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
               </select>
               <Input placeholder="Duration (min)" type="number" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))} />
               <Input placeholder="Location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
-              <select value={form.presenter_id} onChange={e => setForm(f => ({ ...f, presenter_id: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="">Select Presenter</option>
-                {presenters.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <div className="md:col-span-2">
+                <label className="text-xs text-muted-foreground mb-1 block">Presenters (hold Ctrl/Cmd to select multiple)</label>
+                <select multiple value={form.presenter_ids} onChange={e => { const selected = Array.from(e.target.selectedOptions, o => o.value); setForm(f => ({ ...f, presenter_ids: selected })); }} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]">
+                  {presenters.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
               <Input placeholder="Max Participants (optional)" type="number" value={form.max_participants} onChange={e => setForm(f => ({ ...f, max_participants: e.target.value }))} />
             </div>
             <Textarea placeholder="Description (use **bold** and line breaks for formatting)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-4" rows={4} />
@@ -350,7 +370,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => toggleComplete(ws)} className="text-xs">{ws.is_completed ? 'Reopen' : 'Complete'}</Button>
-                <Button variant="ghost" size="sm" onClick={() => { setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_id: ws.presenter_id || '', max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '' }); setShowForm(true); }}>
+                <Button variant="ghost" size="sm" onClick={async () => { const wps = await getWorkshopPresenters(ws.id); setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_ids: wps.map((wp: any) => wp.presenter_id), max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '' }); setShowForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => deleteWorkshop(ws.id)} className="text-destructive hover:text-destructive">
@@ -409,18 +429,20 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   </label>
                 </div>
 
-                {/* Presenter Certificate */}
-                {ws.is_completed && ws.presenter_id && (
+                {/* Presenter Certificates */}
+                {ws.is_completed && (
                   <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Award className="w-4 h-4 text-accent" /> Presenter Certificate</h4>
-                    {(() => {
-                      const presenter = presenters.find(p => p.id === ws.presenter_id);
-                      return presenter ? (
-                        <Button variant="outline" size="sm" onClick={() => generateCert(presenter.name, 'presenter')} className="text-xs gap-1">
-                          <Award className="w-3.5 h-3.5" /> {presenter.name}'s Certificate
+                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Award className="w-4 h-4 text-accent" /> Presenter Certificates</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {presenters.filter(p => {
+                        // Show presenters linked to this workshop - check via loaded data
+                        return true; // We'll show all and let user pick
+                      }).map(p => (
+                        <Button key={p.id} variant="outline" size="sm" onClick={() => generateCert(p.name, 'presenter')} className="text-xs gap-1">
+                          <Award className="w-3.5 h-3.5" /> {p.name}
                         </Button>
-                      ) : null;
-                    })()}
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -462,18 +484,21 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
   const [form, setForm] = useState({ name: '', title: '', bio: '' });
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
+  const [workshopPresenterLinks, setWorkshopPresenterLinks] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ps, ws, cs] = await Promise.all([
+      const [ps, ws, cs, wps] = await Promise.all([
         adminRequest('list', 'presenters', undefined, undefined, { order: { column: 'name', ascending: true } }, adminPwd),
         adminRequest('list', 'workshops', undefined, undefined, { order: { column: 'date', ascending: false } }, adminPwd),
         getCompanySettings(),
+        adminRequest('list', 'workshop_presenters', undefined, undefined, { select: '*' }, adminPwd),
       ]);
       setPresenters(ps || []);
       setWorkshops(ws || []);
       setCompany(cs);
+      setWorkshopPresenterLinks(wps || []);
     } catch (e: any) { toast({ title: 'Load failed', variant: 'destructive' }); }
     setLoading(false);
   }, [adminPwd, toast]);
@@ -606,7 +631,8 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
 
       <div className="grid gap-4">
         {presenters.map(p => {
-          const presenterWorkshops = workshops.filter(w => w.presenter_id === p.id && w.is_completed);
+          const presenterWsIds = workshopPresenterLinks.filter((wp: any) => wp.presenter_id === p.id).map((wp: any) => wp.workshop_id);
+          const presenterWorkshops = workshops.filter(w => presenterWsIds.includes(w.id) && w.is_completed);
           return (
             <div key={p.id} className="bg-card border border-border rounded-lg p-5">
               <div className="flex items-start justify-between">

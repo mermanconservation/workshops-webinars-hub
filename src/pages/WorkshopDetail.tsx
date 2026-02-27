@@ -4,12 +4,13 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, registerForWorkshop, getCompanySettings, saveCertificateVerification } from '@/lib/api';
+import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification } from '@/lib/api';
 import { generateGoogleCalendarUrl, generateICSFile } from '@/lib/calendar';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { registerForWorkshop } from '@/lib/api';
 
 const WorkshopDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,6 @@ const WorkshopDetail = () => {
   const [registering, setRegistering] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [certEmail, setCertEmail] = useState('');
-  const [presenterCertLoading, setPresenterCertLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +47,12 @@ const WorkshopDetail = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const presenters = (workshop?.workshop_presenters || [])
+    .map((wp: any) => wp.presenters)
+    .filter(Boolean);
+
+  const presenterNames = presenters.map((p: any) => p.name).join(', ');
+
   const handleRegister = async () => {
     if (!regName.trim() || !regEmail.trim()) {
       toast({ title: 'Please fill in your name and email', variant: 'destructive' });
@@ -66,46 +72,13 @@ const WorkshopDetail = () => {
     setRegistering(false);
   };
 
-  const handleCertificate = async () => {
-    if (!certEmail.trim()) {
-      toast({ title: 'Enter your email to get certificate', variant: 'destructive' });
-      return;
-    }
-    const participant = participants.find(p => p.email.toLowerCase() === certEmail.toLowerCase());
-    if (!participant) {
-      toast({ title: 'Email not found in participants list', variant: 'destructive' });
-      return;
-    }
-    setCertLoading(true);
-    try {
-      await downloadCertificate(participant.full_name, 'participant');
-      toast({ title: 'Certificate downloaded!' });
-    } catch (e: any) {
-      toast({ title: 'Certificate generation failed', description: e.message, variant: 'destructive' });
-    }
-    setCertLoading(false);
-  };
-
-  const handlePresenterCertificate = async () => {
-    if (!workshop?.presenters?.name) return;
-    setPresenterCertLoading(true);
-    try {
-      await downloadCertificate(workshop.presenters.name, 'presenter');
-      toast({ title: 'Presenter certificate downloaded!' });
-    } catch (e: any) {
-      toast({ title: 'Certificate generation failed', description: e.message, variant: 'destructive' });
-    }
-    setPresenterCertLoading(false);
-  };
-
   const downloadCertificate = async (name: string, type: 'participant' | 'presenter') => {
     const verificationCode = generateVerificationCode();
-    const verificationUrl = `${window.location.origin}/verify?code=${verificationCode}`;
     const params: any = {
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
-      presenterName: workshop.presenters?.name || 'Presenter',
-      signerName: company?.director_name || workshop.presenters?.name || 'Director',
+      presenterName: presenterNames || 'Presenter',
+      signerName: company?.director_name || presenterNames || 'Director',
       companyName: company?.company_name || 'Wildlife UK',
       companyLogoUrl: company?.logo_url,
       type,
@@ -133,15 +106,49 @@ const WorkshopDetail = () => {
       presenterName: type === 'presenter' ? name : undefined,
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
-      signerName: company?.director_name || workshop.presenters?.name || 'Director',
-      signatureUrl: company?.director_signature_url || workshop.presenters?.signature_url,
+      signerName: company?.director_name || presenterNames || 'Director',
+      signatureUrl: company?.director_signature_url || presenters[0]?.signature_url,
       companyName: company?.company_name || 'Wildlife UK',
       companyLogoUrl: company?.logo_url,
       partnerLogos: workshop.partner_logos || [],
       type,
       verificationCode,
-      verificationUrl,
     });
+  };
+
+  const handleCertificate = async () => {
+    if (!certEmail.trim()) {
+      toast({ title: 'Enter your email to get certificate', variant: 'destructive' });
+      return;
+    }
+    const email = certEmail.toLowerCase();
+    const participant = participants.find(p => p.email.toLowerCase() === email);
+    const isPresenter = presenters.some((p: any) => p.name && participants.find((pp: any) => pp.email.toLowerCase() === email));
+    // Check if this email belongs to a presenter too (by matching presenter name to participant name)
+    const matchedPresenter = presenters.find((p: any) => {
+      const part = participants.find((pp: any) => pp.email.toLowerCase() === email);
+      return part && p.name.toLowerCase() === part.full_name.toLowerCase();
+    });
+
+    if (!participant) {
+      toast({ title: 'Email not found in participants list', variant: 'destructive' });
+      return;
+    }
+    setCertLoading(true);
+    try {
+      // Download participant certificate
+      await downloadCertificate(participant.full_name, 'participant');
+      toast({ title: 'Participant certificate downloaded!' });
+
+      // If also a presenter, download presenter certificate too
+      if (matchedPresenter) {
+        await downloadCertificate(matchedPresenter.name, 'presenter');
+        toast({ title: 'Presenter certificate also downloaded!' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Certificate generation failed', description: e.message, variant: 'destructive' });
+    }
+    setCertLoading(false);
   };
 
   function generateVerificationCode() {
@@ -176,20 +183,18 @@ const WorkshopDetail = () => {
             <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" />{format(new Date(workshop.date), 'EEEE, dd MMMM yyyy · HH:mm')}</span>
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" />{workshop.duration_minutes} min</span>
             {workshop.location && <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" />{workshop.location}</span>}
-            {workshop.presenters?.name && <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{workshop.presenters.name}</span>}
+            {presenterNames && <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{presenterNames}</span>}
           </div>
         </div>
       </div>
 
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-10">
-        {/* Description - rendered with formatting */}
         {workshop.description && (
           <section>
             <div className="text-foreground leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatDescription(workshop.description) }} />
           </section>
         )}
 
-        {/* Timeline / Programme */}
         {workshop.timeline && (
           <section className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
@@ -199,7 +204,6 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Calendar + Registration for upcoming */}
         {isUpcoming && (
           <section className="grid md:grid-cols-2 gap-6">
             <div className="bg-card border border-border rounded-lg p-6">
@@ -226,7 +230,6 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Videos */}
         {videos.length > 0 && (
           <section>
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
@@ -250,7 +253,6 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Materials */}
         {materials.length > 0 && (
           <section>
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
@@ -268,7 +270,6 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Participants list */}
         {participants.length > 0 && (
           <section className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
@@ -285,29 +286,14 @@ const WorkshopDetail = () => {
           </section>
         )}
 
-        {/* Presenter Certificate for completed events */}
-        {isPast && workshop.presenters?.name && (
-          <section className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-accent" /> Presenter Certificate
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Download your certificate of presentation for this {eventLabel.toLowerCase()}.
-            </p>
-            <Button onClick={handlePresenterCertificate} disabled={presenterCertLoading} className="bg-accent text-accent-foreground hover:opacity-90">
-              {presenterCertLoading ? 'Generating...' : `Download ${workshop.presenters.name}'s Certificate`}
-            </Button>
-          </section>
-        )}
-
-        {/* Participant Certificate section for completed events */}
+        {/* Certificate download for completed events - handles both participant and presenter */}
         {isPast && participants.length > 0 && (
           <section className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
-              🏅 Download Your Certificate
+              <Award className="w-5 h-5 text-accent" /> Download Your Certificate
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Enter the email you registered with to download your certificate of participation.
+              Enter the email you registered with to download your certificate. If you were also a presenter, both certificates will be generated.
             </p>
             <div className="flex gap-3 max-w-md">
               <Input placeholder="Your registered email" type="email" value={certEmail} onChange={e => setCertEmail(e.target.value)} />

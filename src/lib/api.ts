@@ -50,7 +50,7 @@ export async function generateCertificateText(params: {
 export async function getWorkshops() {
   const { data, error } = await supabase
     .from('workshops')
-    .select('*, presenters(*)')
+    .select('*, workshop_presenters(presenter_id, presenters(*))')
     .order('date', { ascending: true });
   if (error) throw error;
   return data;
@@ -59,9 +59,18 @@ export async function getWorkshops() {
 export async function getWorkshop(id: string) {
   const { data, error } = await supabase
     .from('workshops')
-    .select('*, presenters(*)')
+    .select('*, workshop_presenters(presenter_id, presenters(*))')
     .eq('id', id)
     .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkshopPresenters(workshopId: string) {
+  const { data, error } = await supabase
+    .from('workshop_presenters')
+    .select('*, presenters(*)')
+    .eq('workshop_id', workshopId);
   if (error) throw error;
   return data;
 }
