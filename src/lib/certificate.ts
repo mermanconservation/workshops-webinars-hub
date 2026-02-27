@@ -168,15 +168,12 @@ export async function generateCertificatePDF(data: CertificateData) {
   pdf.setTextColor(100, 100, 100);
   pdf.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), sigX + 15, bottomY + 11, { align: 'center' });
 
-  // Verification code inside frame (bottom center)
+  // Verification code inside frame (bottom center) - moved up to avoid frame lines
   if (data.verificationCode) {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(150, 150, 150);
-    pdf.text(`Verify: ${data.verificationCode}`, width / 2, height - 17, { align: 'center' });
-    if (data.verificationUrl) {
-      pdf.text(data.verificationUrl, width / 2, height - 14, { align: 'center' });
-    }
+    pdf.text(`Verification: ${data.verificationCode}`, width / 2, height - 22, { align: 'center' });
   }
 
   // Bottom decorative lines

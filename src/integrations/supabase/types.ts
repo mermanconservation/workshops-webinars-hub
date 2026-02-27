@@ -188,6 +188,42 @@ export type Database = {
           },
         ]
       }
+      workshop_presenters: {
+        Row: {
+          created_at: string
+          id: string
+          presenter_id: string
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          presenter_id: string
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          presenter_id?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_presenters_presenter_id_fkey"
+            columns: ["presenter_id"]
+            isOneToOne: false
+            referencedRelation: "presenters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_presenters_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshop_videos: {
         Row: {
           created_at: string
