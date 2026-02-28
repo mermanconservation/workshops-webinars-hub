@@ -499,7 +499,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
       setWorkshops(ws || []);
       setCompany(cs);
       setWorkshopPresenterLinks(wps || []);
-    } catch (e: any) { toast({ title: 'Load failed', variant: 'destructive' }); }
+    } catch (e: any) { toast({ title: 'Load failed', description: e.message, variant: 'destructive' }); }
     setLoading(false);
   }, [adminPwd, toast]);
 
@@ -693,14 +693,44 @@ function SettingsTab({ adminPwd }: { adminPwd: string }) {
 
   useEffect(() => {
     getCompanySettings()
-      .then(s => { setSettings(s); setForm({ company_name: s.company_name || '', director_name: s.director_name || '', additional_details: s.additional_details || '' }); })
+      .then(s => {
+        setSettings(s);
+        setForm({
+          company_name: s?.company_name || 'Wildlife UK',
+          director_name: s?.director_name || '',
+          additional_details: s?.additional_details || '',
+        });
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
+  const ensureSettingsRecord = async () => {
+    if (settings?.id) return settings.id as string;
+
+    const created = await adminRequest(
+      'insert',
+      'company_settings',
+      {
+        company_name: form.company_name || 'Wildlife UK',
+        director_name: form.director_name || null,
+        additional_details: form.additional_details || null,
+      },
+      undefined,
+      undefined,
+      adminPwd
+    );
+
+    const createdSettings = created?.[0];
+    if (!createdSettings?.id) throw new Error('Could not create company settings');
+    setSettings(createdSettings);
+    return createdSettings.id as string;
+  };
+
   const save = async () => {
     try {
-      await adminRequest('update', 'company_settings', form, settings.id, undefined, adminPwd);
+      const settingsId = await ensureSettingsRecord();
+      await adminRequest('update', 'company_settings', form, settingsId, undefined, adminPwd);
       toast({ title: 'Settings saved' });
       const s = await getCompanySettings();
       setSettings(s);
@@ -711,8 +741,9 @@ function SettingsTab({ adminPwd }: { adminPwd: string }) {
 
   const uploadLogo = async (file: File) => {
     try {
+      const settingsId = await ensureSettingsRecord();
       const url = await uploadFile(file, 'company');
-      await adminRequest('update', 'company_settings', { logo_url: url }, settings.id, undefined, adminPwd);
+      await adminRequest('update', 'company_settings', { logo_url: url }, settingsId, undefined, adminPwd);
       toast({ title: 'Logo uploaded' });
       const s = await getCompanySettings();
       setSettings(s);
@@ -723,8 +754,9 @@ function SettingsTab({ adminPwd }: { adminPwd: string }) {
 
   const uploadSignature = async (file: File) => {
     try {
+      const settingsId = await ensureSettingsRecord();
       const url = await uploadFile(file, 'company');
-      await adminRequest('update', 'company_settings', { director_signature_url: url }, settings.id, undefined, adminPwd);
+      await adminRequest('update', 'company_settings', { director_signature_url: url }, settingsId, undefined, adminPwd);
       toast({ title: 'Signature uploaded' });
       const s = await getCompanySettings();
       setSettings(s);
