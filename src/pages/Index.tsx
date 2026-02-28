@@ -31,13 +31,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="bg-gradient-forest text-primary-foreground py-16 px-6">
-        <div className="max-w-5xl mx-auto">
+      <div className="bg-card border-b border-border py-16 px-6">
+        <div className="max-w-5xl mx-auto relative">
+          <Link
+            to="/verify"
+            aria-label="Verify certificate"
+            title="Verify certificate"
+            className="absolute right-0 top-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ShieldCheck className="w-4 h-4" />
+          </Link>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 text-foreground">
               Workshop & Webinars Hub
             </h1>
-            <p className="text-primary-foreground/75 max-w-xl text-sm md:text-base leading-relaxed">
+            <p className="text-muted-foreground max-w-xl text-sm md:text-base leading-relaxed">
               Explore our upcoming sessions or browse past events with recordings, materials and certificates.
             </p>
           </motion.div>
@@ -80,12 +88,6 @@ const Index = () => {
               <EventSection title="Past Webinars" icon={<Monitor className="w-6 h-6 text-accent" />} events={pastWebinars} isPast />
             )}
 
-            {/* Verify link */}
-            <section className="mt-12 text-center">
-              <Link to="/verify" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg px-5 py-3 hover:bg-card">
-                <ShieldCheck className="w-4 h-4" /> Verify a certificate
-              </Link>
-            </section>
           </>
         )}
       </main>
