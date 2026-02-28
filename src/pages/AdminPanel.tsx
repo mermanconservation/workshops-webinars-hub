@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -446,6 +446,38 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   </div>
                 )}
 
+                {/* Register Presenters as Participants */}
+                {(() => {
+                  const wsPresentersForWs = presenters.filter(p => {
+                    // Check if presenter is linked to this workshop via workshop_presenters
+                    return true; // show all for now
+                  });
+                  const presentersWithEmail = wsPresentersForWs.filter(p => p.email);
+                  const unregisteredPresenters = presentersWithEmail.filter(
+                    p => !participants.some(part => part.email.toLowerCase() === p.email.toLowerCase())
+                  );
+                  return unregisteredPresenters.length > 0 ? (
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><UserPlus className="w-4 h-4 text-accent" /> Register Presenters as Participants</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {unregisteredPresenters.map(p => (
+                          <Button key={p.id} variant="outline" size="sm" onClick={async () => {
+                            try {
+                              await adminRequest('insert', 'workshop_participants', { workshop_id: ws.id, full_name: p.name, email: p.email }, undefined, undefined, adminPwd);
+                              toast({ title: `${p.name} registered as participant` });
+                              loadWorkshopDetails(ws.id);
+                            } catch (e: any) {
+                              toast({ title: e.message?.includes('duplicate') ? 'Already registered' : 'Registration failed', variant: 'destructive' });
+                            }
+                          }} className="text-xs gap-1">
+                            <UserPlus className="w-3.5 h-3.5" /> {p.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
                 {/* Participants */}
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Users className="w-4 h-4 text-accent" /> Participants ({participants.length})</h4>
@@ -481,7 +513,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', title: '', bio: '' });
+  const [form, setForm] = useState({ name: '', title: '', bio: '', email: '' });
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [workshopPresenterLinks, setWorkshopPresenterLinks] = useState<any[]>([]);
@@ -514,7 +546,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
       }
       setShowForm(false);
       setEditId(null);
-      setForm({ name: '', title: '', bio: '' });
+      setForm({ name: '', title: '', bio: '', email: '' });
       load();
       toast({ title: 'Saved' });
     } catch (e: any) {
@@ -608,7 +640,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-foreground">Presenters</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', title: '', bio: '' }); }} className="bg-accent text-accent-foreground gap-1">
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', title: '', bio: '', email: '' }); }} className="bg-accent text-accent-foreground gap-1">
           <Plus className="w-4 h-4" /> Add Presenter
         </Button>
       </div>
@@ -618,6 +650,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-card border border-border rounded-lg p-6 mb-6 overflow-hidden">
             <div className="grid gap-4 md:grid-cols-2">
               <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <Input placeholder="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               <Input placeholder="Title / Role" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
             <Textarea placeholder="Bio" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} className="mt-4" />
@@ -645,10 +678,11 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
                   <div>
                     <h3 className="font-semibold text-foreground">{p.name}</h3>
                     {p.title && <p className="text-xs text-muted-foreground">{p.title}</p>}
+                    {p.email && <p className="text-xs text-muted-foreground">{p.email}</p>}
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => { setEditId(p.id); setForm({ name: p.name, title: p.title || '', bio: p.bio || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setEditId(p.id); setForm({ name: p.name, title: p.title || '', bio: p.bio || '', email: p.email || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="sm" onClick={() => del(p.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </div>
