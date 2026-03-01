@@ -47,11 +47,13 @@ const WorkshopDetail = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const presenters = (workshop?.workshop_presenters || [])
+  const linkedPresenters = (workshop?.workshop_presenters || [])
     .map((wp: any) => wp.presenters)
     .filter(Boolean);
-
-  const presenterNames = presenters.map((p: any) => p.name).join(', ');
+  const legacyPresenter = workshop?.presenters;
+  const presenters = linkedPresenters.length > 0 ? linkedPresenters : (legacyPresenter ? [legacyPresenter] : []);
+  const presenterNamesArray = presenters.map((p: any) => p.name).filter(Boolean);
+  const presenterNames = presenterNamesArray.join(', ');
 
   const handleRegister = async () => {
     if (!regName.trim() || !regEmail.trim()) {
@@ -78,7 +80,7 @@ const WorkshopDetail = () => {
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
       presenterName: presenterNames || 'Presenter',
-      presenterNames: presenters.map((p: any) => p.name).filter(Boolean),
+      presenterNames: presenterNamesArray,
       signerName: company?.director_name || presenterNames || 'Director',
       companyName: company?.company_name || 'Wildlife UK',
       companyLogoUrl: company?.logo_url,
@@ -105,7 +107,7 @@ const WorkshopDetail = () => {
       certificateText,
       participantName: type === 'participant' ? name : undefined,
       presenterName: type === 'presenter' ? name : undefined,
-      presenterNames: presenters.map((p: any) => p.name).filter(Boolean),
+      presenterNames: presenterNamesArray,
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
       signerName: company?.director_name || presenterNames || 'Director',
