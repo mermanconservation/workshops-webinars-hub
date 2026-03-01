@@ -78,6 +78,7 @@ const WorkshopDetail = () => {
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
       presenterName: presenterNames || 'Presenter',
+      presenterNames: presenters.map((p: any) => p.name).filter(Boolean),
       signerName: company?.director_name || presenterNames || 'Director',
       companyName: company?.company_name || 'Wildlife UK',
       companyLogoUrl: company?.logo_url,

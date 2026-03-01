@@ -244,6 +244,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         workshopTitle: ws.title,
         workshopDate: ws.date,
         presenterName: presenterNamesList || 'Presenter',
+        presenterNames: wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean),
         signerName: company?.director_name || presenterNamesList || 'Director',
         companyName: company?.company_name || 'Wildlife UK',
         type,
