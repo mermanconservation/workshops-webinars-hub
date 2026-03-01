@@ -234,17 +234,23 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
     const ws = workshops.find(w => w.id === selectedWorkshop);
     if (!ws) return;
-    // Get workshop presenters
+    // Get workshop presenters (with legacy fallback to workshops.presenter_id)
     let wsPresenters: any[] = [];
     try { wsPresenters = await getWorkshopPresenters(ws.id); } catch {}
-    const presenterNamesList = wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean).join(', ');
+    const linkedPresenterNames = wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean);
+    const legacyPresenterName = presenters.find((p: any) => p.id === ws.presenter_id)?.name;
+    const workshopPresenterNames = Array.from(new Set([
+      ...linkedPresenterNames,
+      ...(legacyPresenterName ? [legacyPresenterName] : []),
+    ]));
+    const presenterNamesList = workshopPresenterNames.join(', ');
     try {
       const verificationCode = generateVerificationCode();
       const params: any = {
         workshopTitle: ws.title,
         workshopDate: ws.date,
         presenterName: presenterNamesList || 'Presenter',
-        presenterNames: wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean),
+        presenterNames: workshopPresenterNames,
         signerName: company?.director_name || presenterNamesList || 'Director',
         companyName: company?.company_name || 'Wildlife UK',
         type,
@@ -267,7 +273,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         certificateText,
         participantName: type === 'participant' ? name : undefined,
         presenterName: type === 'presenter' ? name : undefined,
-        presenterNames: wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean),
+        presenterNames: workshopPresenterNames,
         workshopTitle: ws.title,
         workshopDate: ws.date,
         signerName: company?.director_name || presenterNamesList || 'Director',
