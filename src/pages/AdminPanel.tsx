@@ -266,6 +266,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         certificateText,
         participantName: type === 'participant' ? name : undefined,
         presenterName: type === 'presenter' ? name : undefined,
+        presenterNames: wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean),
         workshopTitle: ws.title,
         workshopDate: ws.date,
         signerName: company?.director_name || presenterNamesList || 'Director',
@@ -379,9 +380,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
               </div>
             </div>
 
-            {selectedWorkshop === ws.id && (
+              {selectedWorkshop === ws.id && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t border-border space-y-6">
-                {/* Videos */}
+                {/* Videos - only when completed */}
+                {ws.is_completed && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><Video className="w-4 h-4 text-accent" /> Videos</h4>
                   {videos.map(v => (
@@ -396,8 +398,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                     <Button size="sm" onClick={addVideo} className="bg-accent text-accent-foreground">Add</Button>
                   </div>
                 </div>
+                )}
 
-                {/* Materials */}
+                {/* Materials - only when completed */}
+                {ws.is_completed && (
                 <div>
                   <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><FileText className="w-4 h-4 text-accent" /> Materials</h4>
                   {materials.map(m => (
@@ -411,6 +415,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                     <input type="file" className="hidden" onChange={e => e.target.files?.[0] && addMaterial(e.target.files[0])} />
                   </label>
                 </div>
+                )}
 
                 {/* Partner Logos */}
                 <div>
@@ -610,6 +615,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
       await generateCertificatePDF({
         certificateText,
         presenterName: presenter.name,
+        presenterNames: [presenter.name],
         workshopTitle: ws.title,
         workshopDate: ws.date,
         signerName: company?.director_name || 'Director',

@@ -4,6 +4,7 @@ interface CertificateData {
   certificateText: string;
   participantName?: string;
   presenterName?: string;
+  presenterNames?: string[];
   workshopTitle: string;
   workshopDate: string;
   signerName: string;
@@ -122,6 +123,17 @@ export async function generateCertificatePDF(data: CertificateData) {
   pdf.text(new Date(data.workshopDate).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric'
   }), width / 2, yPos, { align: 'center' });
+  yPos += 8;
+
+  // Presenter names
+  const presentersList = (data.presenterNames || []).filter(Boolean);
+  if (presentersList.length > 0) {
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(80, 80, 80);
+    const label = presentersList.length === 1 ? 'Presented by:' : 'Presented by:';
+    pdf.text(`${label} ${presentersList.join(', ')}`, width / 2, yPos, { align: 'center' });
+  }
 
   // === BOTTOM SECTION ===
   const bottomY = height - 40;

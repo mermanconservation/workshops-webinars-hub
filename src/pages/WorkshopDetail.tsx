@@ -104,6 +104,7 @@ const WorkshopDetail = () => {
       certificateText,
       participantName: type === 'participant' ? name : undefined,
       presenterName: type === 'presenter' ? name : undefined,
+      presenterNames: presenters.map((p: any) => p.name).filter(Boolean),
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
       signerName: company?.director_name || presenterNames || 'Director',
