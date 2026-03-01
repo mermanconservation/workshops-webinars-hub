@@ -14,13 +14,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { participantName, workshopTitle, workshopDate, presenterName, signerName, companyName, companyLogoUrl, type } = await req.json();
+    const { participantName, workshopTitle, workshopDate, presenterName, presenterNames, signerName, companyName, companyLogoUrl, type } = await req.json();
 
     const isPresenter = type === 'presenter';
+    const presentersList = (presenterNames && presenterNames.length > 0) ? presenterNames : (presenterName ? [presenterName] : ['Presenter']);
+    const presentersText = presentersList.join(', ');
     
     const prompt = isPresenter
       ? `Generate a formal certificate of presentation text. The presenter "${presenterName}" presented a workshop titled "${workshopTitle}" on ${workshopDate} for the organization "${companyName}". Write an elegant, professional certificate body text (3-4 sentences max). Do not include headers or signatures - just the body text. Make it sound distinguished and professional.`
-      : `Generate a formal certificate of participation text. The participant "${participantName}" attended a workshop titled "${workshopTitle}" on ${workshopDate}, presented by "${presenterName}" for the organization "${companyName}". Write an elegant, professional certificate body text (3-4 sentences max). Do not include headers or signatures - just the body text. Make it sound distinguished and professional.`;
+      : `Generate a formal certificate of participation text. The participant "${participantName}" attended a workshop titled "${workshopTitle}" on ${workshopDate}, led by ${presentersText}, for the organization "${companyName}". Write an elegant, professional certificate body text (3-4 sentences max). Do not include headers or signatures - just the body text. Make it sound distinguished and professional. Use the actual presenter names in the text.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
