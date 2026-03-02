@@ -79,6 +79,7 @@ const WorkshopDetail = () => {
     const params: any = {
       workshopTitle: workshop.title,
       workshopDate: workshop.date,
+      workshopDescription: workshop.description || '',
       presenterName: presenterNames || 'Presenter',
       presenterNames: presenterNamesArray,
       signerName: company?.director_name || presenterNames || 'Director',

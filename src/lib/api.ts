@@ -24,6 +24,7 @@ export async function generateCertificateText(params: {
   participantName?: string;
   workshopTitle: string;
   workshopDate: string;
+  workshopDescription?: string;
   presenterName: string;
   presenterNames?: string[];
   signerName: string;
