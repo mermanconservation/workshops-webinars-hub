@@ -125,14 +125,15 @@ export async function generateCertificatePDF(data: CertificateData) {
   }), width / 2, yPos, { align: 'center' });
   yPos += 8;
 
-  // Presenter names
-  const presentersList = (data.presenterNames || []).filter(Boolean);
-  if (presentersList.length > 0) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    pdf.setTextColor(80, 80, 80);
-    const label = presentersList.length === 1 ? 'Presented by:' : 'Presented by:';
-    pdf.text(`${label} ${presentersList.join(', ')}`, width / 2, yPos, { align: 'center' });
+  // Presenter names (only show on presenter certificates)
+  if (data.type === 'presenter') {
+    const presentersList = (data.presenterNames || []).filter(Boolean);
+    if (presentersList.length > 0) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Presented by: ${presentersList.join(', ')}`, width / 2, yPos, { align: 'center' });
+    }
   }
 
   // === BOTTOM SECTION ===

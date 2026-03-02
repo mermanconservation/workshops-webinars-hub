@@ -21,8 +21,8 @@ serve(async (req) => {
     const presentersText = presentersList.join(', ');
     
     const prompt = isPresenter
-      ? `Generate a formal certificate of presentation text. The presenter "${presenterName}" presented a workshop titled "${workshopTitle}" on ${workshopDate} for the organization "${companyName}". Write an elegant, professional certificate body text (3-4 sentences max). Do not include headers or signatures - just the body text. Make it sound distinguished and professional.`
-      : `Generate a formal certificate of participation text. The participant "${participantName}" attended a workshop titled "${workshopTitle}" on ${workshopDate}, led by ${presentersText}, for the organization "${companyName}". Write an elegant, professional certificate body text (3-4 sentences max). Do not include headers or signatures - just the body text. Make it sound distinguished and professional. Use the actual presenter names in the text.`;
+      ? `Write a warm, human certificate body for a presenter. "${presenterName}" delivered a session titled "${workshopTitle}" on ${workshopDate} for "${companyName}". Write 2-3 natural, heartfelt sentences acknowledging their contribution and expertise. Avoid stiff corporate language — make it feel genuine and appreciative. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`
+      : `Write a warm, human certificate body for a participant. "${participantName}" took part in "${workshopTitle}" on ${workshopDate}, facilitated by ${presentersText}, organised by "${companyName}". Write 2-3 natural, heartfelt sentences recognising their commitment to learning. Mention the facilitators by name naturally (not as a list). Avoid stiff corporate language — make it feel genuine and encouraging. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
