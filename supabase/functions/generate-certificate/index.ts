@@ -14,15 +14,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { participantName, workshopTitle, workshopDate, presenterName, presenterNames, signerName, companyName, companyLogoUrl, type } = await req.json();
+    const { participantName, workshopTitle, workshopDate, workshopDescription, presenterName, presenterNames, signerName, companyName, companyLogoUrl, type } = await req.json();
 
     const isPresenter = type === 'presenter';
-    const presentersList = (presenterNames && presenterNames.length > 0) ? presenterNames : (presenterName ? [presenterName] : ['Presenter']);
+    const presentersList = (presenterNames && presenterNames.length > 0) ? presenterNames : (presenterName ? [presenterName] : []);
     const presentersText = presentersList.join(', ');
+    const topicContext = workshopDescription ? ` The session covered: ${workshopDescription.substring(0, 300)}.` : '';
     
     const prompt = isPresenter
-      ? `Write a warm, human certificate body for a presenter. "${presenterName}" delivered a session titled "${workshopTitle}" on ${workshopDate} for "${companyName}". Write 2-3 natural, heartfelt sentences acknowledging their contribution and expertise. Avoid stiff corporate language — make it feel genuine and appreciative. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`
-      : `Write a warm, human certificate body for a participant. "${participantName}" took part in "${workshopTitle}" on ${workshopDate}, facilitated by ${presentersText}, organised by "${companyName}". Write 2-3 natural, heartfelt sentences recognising their commitment to learning. Mention the facilitators by name naturally (not as a list). Avoid stiff corporate language — make it feel genuine and encouraging. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`;
+      ? `Write a warm, human certificate body for a presenter. "${presenterName}" delivered a session titled "${workshopTitle}" on ${workshopDate} for "${companyName}".${topicContext} Write 2-3 natural, heartfelt sentences acknowledging their contribution and expertise. Weave in what the session was about so the certificate feels specific and meaningful. Do NOT mention presenter names again in the body — the name already appears elsewhere on the certificate. Avoid stiff corporate language. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`
+      : `Write a warm, human certificate body for a participant. "${participantName}" took part in "${workshopTitle}" on ${workshopDate}, organised by "${companyName}".${topicContext} Write 2-3 natural, heartfelt sentences recognising their commitment to learning and weave in what the session covered so the certificate feels specific and meaningful. Do NOT mention any presenter names, facilitator names, or the company name again — those already appear elsewhere on the certificate. Avoid stiff corporate language. Do not include headers, signatures, or the word "certifies". Just the body paragraph.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

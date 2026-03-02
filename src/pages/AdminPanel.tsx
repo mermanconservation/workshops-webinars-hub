@@ -249,6 +249,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
       const params: any = {
         workshopTitle: ws.title,
         workshopDate: ws.date,
+        workshopDescription: ws.description || '',
         presenterName: presenterNamesList || 'Presenter',
         presenterNames: workshopPresenterNames,
         signerName: company?.director_name || presenterNamesList || 'Director',
@@ -604,6 +605,7 @@ function PresentersTab({ adminPwd }: { adminPwd: string }) {
         presenterName: presenter.name,
         workshopTitle: ws.title,
         workshopDate: ws.date,
+        workshopDescription: ws.description || '',
         signerName: company?.director_name || 'Director',
         companyName: company?.company_name || 'Wildlife UK',
         type: 'presenter',
