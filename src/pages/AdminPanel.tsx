@@ -91,7 +91,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [videoTitle, setVideoTitle] = useState('');
   const [company, setCompany] = useState<any>(null);
   const [workshopPresentersMap, setWorkshopPresentersMap] = useState<Record<string, any[]>>({});
-
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDownloading, setPreviewDownloading] = useState(false);
+  const [pendingCertData, setPendingCertData] = useState<any>(null);
   const load = useCallback(async () => {
     setLoading(true);
     try {
