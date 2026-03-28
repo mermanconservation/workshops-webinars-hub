@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification, getWorkshopPresenters } from '@/lib/api';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
+import { CertificatePreview } from '@/components/CertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -90,7 +91,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [videoTitle, setVideoTitle] = useState('');
   const [company, setCompany] = useState<any>(null);
   const [workshopPresentersMap, setWorkshopPresentersMap] = useState<Record<string, any[]>>({});
-
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDownloading, setPreviewDownloading] = useState(false);
+  const [pendingCertData, setPendingCertData] = useState<any>(null);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -234,7 +238,6 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
     const ws = workshops.find(w => w.id === selectedWorkshop);
     if (!ws) return;
-    // Get workshop presenters (with legacy fallback to workshops.presenter_id)
     let wsPresenters: any[] = [];
     try { wsPresenters = await getWorkshopPresenters(ws.id); } catch {}
     const linkedPresenterNames = wsPresenters.map((wp: any) => wp.presenters?.name).filter(Boolean);
@@ -259,18 +262,21 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
       if (type === 'participant') params.participantName = name;
       else params.presenterName = name;
       const { certificateText } = await generateCertificateText(params);
-      try {
-        await saveCertificateVerification({
-          verificationCode,
-          participantName: name,
-          workshopId: ws.id,
-          workshopTitle: ws.title,
-          workshopDate: ws.date,
-          certificateType: type,
-          companyName: company?.company_name || 'Wildlife UK',
-        });
-      } catch (e) { console.warn('Verification save failed'); }
-      await generateCertificatePDF({
+
+      // Show preview instead of downloading immediately
+      setPreviewData({
+        recipientName: name,
+        certificateText,
+        workshopTitle: ws.title,
+        workshopDate: ws.date,
+        signerName: company?.director_name || presenterNamesList || 'Director',
+        companyName: company?.company_name || 'Wildlife UK',
+        companyLogoUrl: company?.logo_url,
+        type,
+        presenterNames: workshopPresenterNames,
+        partnerLogos: ws.partner_logos || [],
+      });
+      setPendingCertData({
         certificateText,
         participantName: type === 'participant' ? name : undefined,
         presenterName: type === 'presenter' ? name : undefined,
@@ -284,10 +290,36 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         partnerLogos: ws.partner_logos || [],
         type,
         verificationCode,
+        verification: {
+          verificationCode,
+          participantName: name,
+          workshopId: ws.id,
+          workshopTitle: ws.title,
+          workshopDate: ws.date,
+          certificateType: type,
+          companyName: company?.company_name || 'Wildlife UK',
+        },
       });
+      setPreviewOpen(true);
     } catch (e: any) {
       toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const handlePreviewDownload = async () => {
+    if (!pendingCertData) return;
+    setPreviewDownloading(true);
+    try {
+      try {
+        await saveCertificateVerification(pendingCertData.verification);
+      } catch (e) { console.warn('Verification save failed'); }
+      const { verification, ...pdfData } = pendingCertData;
+      await generateCertificatePDF(pdfData);
+      toast({ title: 'Certificate downloaded!' });
+    } catch (e: any) {
+      toast({ title: 'Download failed', description: e.message, variant: 'destructive' });
+    }
+    setPreviewDownloading(false);
   };
 
   const addPartnerLogo = async (wsId: string, file: File) => {
@@ -516,6 +548,13 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
           </div>
         ))}
       </div>
+      <CertificatePreview
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        onDownload={handlePreviewDownload}
+        data={previewData}
+        downloading={previewDownloading}
+      />
     </div>
   );
 }
