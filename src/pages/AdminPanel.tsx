@@ -548,6 +548,13 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
           </div>
         ))}
       </div>
+      <CertificatePreview
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        onDownload={handlePreviewDownload}
+        data={previewData}
+        downloading={previewDownloading}
+      />
     </div>
   );
 }
