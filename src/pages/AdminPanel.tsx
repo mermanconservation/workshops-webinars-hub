@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification, getWorkshopPresenters } from '@/lib/api';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
+import { CertificatePreview } from '@/components/CertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
