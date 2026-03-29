@@ -306,7 +306,25 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     }
   };
 
-  const handlePreviewDownload = async () => {
+  const handleRegenerate = async () => {
+    if (!previewData || !pendingCertData) return;
+    const params: any = {
+      workshopTitle: previewData.workshopTitle,
+      workshopDate: previewData.workshopDate,
+      workshopDescription: workshops.find(w => w.id === selectedWorkshop)?.description || '',
+      presenterName: pendingCertData.presenterNames?.join(', ') || 'Presenter',
+      presenterNames: pendingCertData.presenterNames || [],
+      signerName: previewData.signerName,
+      companyName: previewData.companyName,
+      type: previewData.type,
+    };
+    if (previewData.type === 'participant') params.participantName = previewData.recipientName;
+    else params.presenterName = previewData.recipientName;
+    const { certificateText } = await generateCertificateText(params);
+    setPreviewData((prev: any) => prev ? { ...prev, certificateText } : prev);
+    setPendingCertData((prev: any) => prev ? { ...prev, certificateText } : prev);
+  };
+
     if (!pendingCertData) return;
     setPreviewDownloading(true);
     try {
