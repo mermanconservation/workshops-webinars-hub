@@ -147,7 +147,10 @@ export function CertificatePreview({ open, onClose, onDownload, onRegenerate, on
           <Button variant="outline" onClick={onClose} className="gap-1 bg-card">
             <X className="w-4 h-4" /> Close
           </Button>
-          <Button onClick={onDownload} disabled={downloading || editing} className="gap-1 bg-accent text-accent-foreground">
+          <Button variant="outline" onClick={handleRegenerate} disabled={regenerating || downloading || editing} className="gap-1 bg-card">
+            <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} /> {regenerating ? 'Regenerating...' : 'Regenerate'}
+          </Button>
+          <Button onClick={onDownload} disabled={downloading || editing || regenerating} className="gap-1 bg-accent text-accent-foreground">
             <Download className="w-4 h-4" /> {downloading ? 'Downloading...' : 'Download PDF'}
           </Button>
         </div>
