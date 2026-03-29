@@ -571,6 +571,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         onDownload={handlePreviewDownload}
+        onRegenerate={handleRegenerate}
         onTextChange={(text) => {
           setPreviewData((prev: any) => prev ? { ...prev, certificateText: text } : prev);
           setPendingCertData((prev: any) => prev ? { ...prev, certificateText: text } : prev);
