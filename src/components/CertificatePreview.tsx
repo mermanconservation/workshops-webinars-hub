@@ -1,11 +1,14 @@
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Download, X, Pencil, Check } from 'lucide-react';
 
 interface CertificatePreviewProps {
   open: boolean;
   onClose: () => void;
   onDownload: () => void;
+  onTextChange?: (text: string) => void;
   data: {
     recipientName: string;
     certificateText: string;
@@ -21,13 +24,25 @@ interface CertificatePreviewProps {
   downloading?: boolean;
 }
 
-export function CertificatePreview({ open, onClose, onDownload, data, downloading }: CertificatePreviewProps) {
+export function CertificatePreview({ open, onClose, onDownload, onTextChange, data, downloading }: CertificatePreviewProps) {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+
+  useEffect(() => {
+    if (data) setEditText(data.certificateText);
+  }, [data?.certificateText]);
+
   if (!data) return null;
 
   const title = data.type === 'presenter' ? 'CERTIFICATE OF PRESENTATION' : 'CERTIFICATE OF PARTICIPATION';
   const formattedDate = new Date(data.workshopDate).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
+
+  const handleSaveEdit = () => {
+    setEditing(false);
+    onTextChange?.(editText);
+  };
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -56,10 +71,33 @@ export function CertificatePreview({ open, onClose, onDownload, data, downloadin
               <p className="text-[#0f4c81] font-bold text-lg md:text-xl">{data.recipientName}</p>
               <div className="w-40 h-px bg-[#3895d3]" />
 
-              {/* Body text */}
-              <p className="text-[#3c3c3c] text-xs md:text-sm leading-relaxed max-w-lg mt-2">
-                {data.certificateText}
-              </p>
+              {/* Editable body text */}
+              <div className="relative max-w-lg mt-2 w-full group">
+                {editing ? (
+                  <div className="flex flex-col gap-1">
+                    <Textarea
+                      value={editText}
+                      onChange={e => setEditText(e.target.value)}
+                      className="text-xs md:text-sm leading-relaxed text-center bg-white/80 border-[#3895d3] min-h-[60px] resize-none"
+                      rows={3}
+                    />
+                    <Button size="sm" onClick={handleSaveEdit} className="self-center gap-1 h-7 text-xs">
+                      <Check className="w-3 h-3" /> Done
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="cursor-pointer rounded px-2 py-1 hover:bg-[#3895d3]/10 transition-colors"
+                    onClick={() => setEditing(true)}
+                    title="Click to edit"
+                  >
+                    <p className="text-[#3c3c3c] text-xs md:text-sm leading-relaxed">
+                      {editText || data.certificateText}
+                    </p>
+                    <Pencil className="w-3 h-3 text-[#3895d3] absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
+              </div>
 
               {/* Workshop title */}
               <p className="text-[#0f4c81] italic text-sm mt-1">"{data.workshopTitle}"</p>
@@ -97,7 +135,7 @@ export function CertificatePreview({ open, onClose, onDownload, data, downloadin
           <Button variant="outline" onClick={onClose} className="gap-1 bg-card">
             <X className="w-4 h-4" /> Close
           </Button>
-          <Button onClick={onDownload} disabled={downloading} className="gap-1 bg-accent text-accent-foreground">
+          <Button onClick={onDownload} disabled={downloading || editing} className="gap-1 bg-accent text-accent-foreground">
             <Download className="w-4 h-4" /> {downloading ? 'Downloading...' : 'Download PDF'}
           </Button>
         </div>
