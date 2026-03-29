@@ -46,6 +46,16 @@ export function CertificatePreview({ open, onClose, onDownload, onRegenerate, on
     onTextChange?.(editText);
   };
 
+  const handleRegenerate = async () => {
+    if (!onRegenerate) return;
+    setRegenerating(true);
+    try {
+      await onRegenerate();
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-3xl p-0 overflow-hidden border-none bg-transparent shadow-none [&>button]:hidden">
