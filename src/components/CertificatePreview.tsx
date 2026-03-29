@@ -25,9 +25,10 @@ interface CertificatePreviewProps {
   downloading?: boolean;
 }
 
-export function CertificatePreview({ open, onClose, onDownload, onTextChange, data, downloading }: CertificatePreviewProps) {
+export function CertificatePreview({ open, onClose, onDownload, onRegenerate, onTextChange, data, downloading }: CertificatePreviewProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (data) setEditText(data.certificateText);
