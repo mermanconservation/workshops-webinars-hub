@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, X, Pencil, Check } from 'lucide-react';
+import { Download, X, Pencil, Check, RefreshCw } from 'lucide-react';
 
 interface CertificatePreviewProps {
   open: boolean;
