@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, X, Pencil, Check } from 'lucide-react';
+import { Download, X, Pencil, Check, RefreshCw } from 'lucide-react';
 
 interface CertificatePreviewProps {
   open: boolean;
   onClose: () => void;
   onDownload: () => void;
+  onRegenerate?: () => Promise<void>;
   onTextChange?: (text: string) => void;
   data: {
     recipientName: string;
@@ -24,9 +25,10 @@ interface CertificatePreviewProps {
   downloading?: boolean;
 }
 
-export function CertificatePreview({ open, onClose, onDownload, onTextChange, data, downloading }: CertificatePreviewProps) {
+export function CertificatePreview({ open, onClose, onDownload, onRegenerate, onTextChange, data, downloading }: CertificatePreviewProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (data) setEditText(data.certificateText);
@@ -42,6 +44,16 @@ export function CertificatePreview({ open, onClose, onDownload, onTextChange, da
   const handleSaveEdit = () => {
     setEditing(false);
     onTextChange?.(editText);
+  };
+
+  const handleRegenerate = async () => {
+    if (!onRegenerate) return;
+    setRegenerating(true);
+    try {
+      await onRegenerate();
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   return (
@@ -135,7 +147,10 @@ export function CertificatePreview({ open, onClose, onDownload, onTextChange, da
           <Button variant="outline" onClick={onClose} className="gap-1 bg-card">
             <X className="w-4 h-4" /> Close
           </Button>
-          <Button onClick={onDownload} disabled={downloading || editing} className="gap-1 bg-accent text-accent-foreground">
+          <Button variant="outline" onClick={handleRegenerate} disabled={regenerating || downloading || editing} className="gap-1 bg-card">
+            <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} /> {regenerating ? 'Regenerating...' : 'Regenerate'}
+          </Button>
+          <Button onClick={onDownload} disabled={downloading || editing || regenerating} className="gap-1 bg-accent text-accent-foreground">
             <Download className="w-4 h-4" /> {downloading ? 'Downloading...' : 'Download PDF'}
           </Button>
         </div>
