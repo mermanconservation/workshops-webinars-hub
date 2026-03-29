@@ -325,6 +325,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     setPendingCertData((prev: any) => prev ? { ...prev, certificateText } : prev);
   };
 
+  const handlePreviewDownload = async () => {
     if (!pendingCertData) return;
     setPreviewDownloading(true);
     try {
