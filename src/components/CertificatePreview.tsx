@@ -8,6 +8,7 @@ interface CertificatePreviewProps {
   open: boolean;
   onClose: () => void;
   onDownload: () => void;
+  onRegenerate?: () => Promise<void>;
   onTextChange?: (text: string) => void;
   data: {
     recipientName: string;
