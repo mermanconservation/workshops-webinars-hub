@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Monitor, Wrench } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Monitor, Wrench, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getWorkshops, getCompanySettings } from '@/lib/api';
 import { format } from 'date-fns';
