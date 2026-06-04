@@ -33,14 +33,26 @@ const Index = () => {
       {/* Hero */}
       <div className="bg-card border-b border-border py-16 px-6">
         <div className="max-w-5xl mx-auto relative">
-          <Link
-            to="/verify"
-            aria-label="Verify certificate"
-            title="Verify certificate"
-            className="absolute right-0 top-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ShieldCheck className="w-4 h-4" />
-          </Link>
+          <div className="absolute right-0 top-0 flex items-center gap-2">
+            <a
+              href="https://www.mermanconservation.co.uk/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Go to Merman Conservation main site"
+              title="Merman Conservation main site"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Home className="w-4 h-4" />
+            </a>
+            <Link
+              to="/verify"
+              aria-label="Verify certificate"
+              title="Verify certificate"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </Link>
+          </div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 text-foreground">
               Workshop & Webinars Hub
