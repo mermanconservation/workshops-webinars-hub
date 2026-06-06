@@ -240,6 +240,59 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
+  const saveLesson = async () => {
+    if (!selectedWorkshop || !lessonForm.title.trim()) {
+      toast({ title: 'Lesson title is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      const data: any = {
+        title: lessonForm.title,
+        description: lessonForm.description || null,
+        video_url: lessonForm.video_url || null,
+      };
+      if (editLessonId) {
+        await adminRequest('update', 'workshop_lessons', data, editLessonId, undefined, adminPwd);
+      } else {
+        data.workshop_id = selectedWorkshop;
+        data.order_index = lessons.length;
+        await adminRequest('insert', 'workshop_lessons', data, undefined, undefined, adminPwd);
+      }
+      setLessonForm({ title: '', description: '', video_url: '' });
+      setEditLessonId(null);
+      loadWorkshopDetails(selectedWorkshop);
+      toast({ title: editLessonId ? 'Lesson updated' : 'Lesson added' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteLesson = async (id: string) => {
+    if (!confirm('Delete this lesson?')) return;
+    await adminRequest('delete', 'workshop_lessons', undefined, id, undefined, adminPwd);
+    if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
+  const addLessonMaterial = async (lesson: any, file: File) => {
+    try {
+      const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
+      const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+      const materials = [...existing, { title: file.name, url, type: file.type }];
+      await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
+      if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+      toast({ title: 'Material added to lesson' });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const removeLessonMaterial = async (lesson: any, idx: number) => {
+    const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+    const materials = existing.filter((_: any, i: number) => i !== idx);
+    await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
+    if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
     const ws = workshops.find(w => w.id === selectedWorkshop);
     if (!ws) return;
