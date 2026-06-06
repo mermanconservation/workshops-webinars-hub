@@ -120,14 +120,16 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const loadWorkshopDetails = async (wsId: string) => {
     setSelectedWorkshop(wsId);
     try {
-      const [v, m, p] = await Promise.all([
+      const [v, m, p, l] = await Promise.all([
         adminRequest('list', 'workshop_videos', undefined, undefined, { select: '*', order: { column: 'created_at', ascending: true } }, adminPwd),
         adminRequest('list', 'workshop_materials', undefined, undefined, { select: '*', order: { column: 'created_at', ascending: true } }, adminPwd),
         getWorkshopParticipants(wsId),
+        getWorkshopLessons(wsId),
       ]);
       setVideos((v || []).filter((x: any) => x.workshop_id === wsId));
       setMaterials((m || []).filter((x: any) => x.workshop_id === wsId));
       setParticipants(p || []);
+      setLessons(l || []);
     } catch (e: any) {
       toast({ title: 'Load details failed', variant: 'destructive' });
     }
