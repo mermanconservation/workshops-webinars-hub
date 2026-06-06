@@ -124,6 +124,50 @@ export type Database = {
         }
         Relationships: []
       }
+      workshop_lessons: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          materials: Json
+          order_index: number
+          title: string
+          updated_at: string
+          video_url: string | null
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          materials?: Json
+          order_index?: number
+          title: string
+          updated_at?: string
+          video_url?: string | null
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          materials?: Json
+          order_index?: number
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_lessons_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshop_materials: {
         Row: {
           created_at: string

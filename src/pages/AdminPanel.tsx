@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification, getWorkshopPresenters } from '@/lib/api';
+import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorkshopParticipants, saveCertificateVerification, getWorkshopPresenters, getWorkshopLessons } from '@/lib/api';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { CertificatePreview } from '@/components/CertificatePreview';
@@ -87,6 +87,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
+  const [editLessonId, setEditLessonId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [company, setCompany] = useState<any>(null);
@@ -117,14 +120,16 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const loadWorkshopDetails = async (wsId: string) => {
     setSelectedWorkshop(wsId);
     try {
-      const [v, m, p] = await Promise.all([
+      const [v, m, p, l] = await Promise.all([
         adminRequest('list', 'workshop_videos', undefined, undefined, { select: '*', order: { column: 'created_at', ascending: true } }, adminPwd),
         adminRequest('list', 'workshop_materials', undefined, undefined, { select: '*', order: { column: 'created_at', ascending: true } }, adminPwd),
         getWorkshopParticipants(wsId),
+        getWorkshopLessons(wsId),
       ]);
       setVideos((v || []).filter((x: any) => x.workshop_id === wsId));
       setMaterials((m || []).filter((x: any) => x.workshop_id === wsId));
       setParticipants(p || []);
+      setLessons(l || []);
     } catch (e: any) {
       toast({ title: 'Load details failed', variant: 'destructive' });
     }
@@ -232,6 +237,59 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
 
   const deleteMaterial = async (id: string) => {
     await adminRequest('delete', 'workshop_materials', undefined, id, undefined, adminPwd);
+    if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
+  const saveLesson = async () => {
+    if (!selectedWorkshop || !lessonForm.title.trim()) {
+      toast({ title: 'Lesson title is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      const data: any = {
+        title: lessonForm.title,
+        description: lessonForm.description || null,
+        video_url: lessonForm.video_url || null,
+      };
+      if (editLessonId) {
+        await adminRequest('update', 'workshop_lessons', data, editLessonId, undefined, adminPwd);
+      } else {
+        data.workshop_id = selectedWorkshop;
+        data.order_index = lessons.length;
+        await adminRequest('insert', 'workshop_lessons', data, undefined, undefined, adminPwd);
+      }
+      setLessonForm({ title: '', description: '', video_url: '' });
+      setEditLessonId(null);
+      loadWorkshopDetails(selectedWorkshop);
+      toast({ title: editLessonId ? 'Lesson updated' : 'Lesson added' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteLesson = async (id: string) => {
+    if (!confirm('Delete this lesson?')) return;
+    await adminRequest('delete', 'workshop_lessons', undefined, id, undefined, adminPwd);
+    if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
+  const addLessonMaterial = async (lesson: any, file: File) => {
+    try {
+      const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
+      const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+      const materials = [...existing, { title: file.name, url, type: file.type }];
+      await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
+      if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+      toast({ title: 'Material added to lesson' });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const removeLessonMaterial = async (lesson: any, idx: number) => {
+    const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+    const materials = existing.filter((_: any, i: number) => i !== idx);
+    await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
@@ -475,6 +533,58 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   </label>
                 </div>
                 )}
+
+                {/* Lessons */}
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                  <div className="space-y-3 mb-3">
+                    {lessons.map((l, idx) => (
+                      <div key={l.id} className="bg-background border border-border rounded-md p-3">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex-1">
+                            <div className="text-xs text-accent font-semibold">Lesson {idx + 1}</div>
+                            <div className="text-sm font-medium text-foreground">{l.title}</div>
+                            {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
+                            {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                            <button onClick={() => deleteLesson(l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                          </div>
+                        </div>
+                        {Array.isArray(l.materials) && l.materials.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {l.materials.map((m: any, i: number) => (
+                              <div key={i} className="flex items-center gap-2 text-xs">
+                                <FileText className="w-3 h-3 text-accent" />
+                                <span className="flex-1 truncate text-muted-foreground">{m.title}</span>
+                                <button onClick={() => removeLessonMaterial(l, i)}><X className="w-3 h-3 text-destructive" /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
+                          <Upload className="w-3 h-3" /> Add material
+                          <input type="file" className="hidden" onChange={e => e.target.files?.[0] && addLessonMaterial(l, e.target.files[0])} />
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-background border border-border rounded-md p-3 space-y-2">
+                    <div className="text-xs font-semibold text-foreground">{editLessonId ? 'Edit lesson' : 'New lesson'}</div>
+                    <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
+                    <Textarea placeholder="Lesson notes / description" value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={3} className="text-sm" />
+                    <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveLesson} className="bg-accent text-accent-foreground gap-1">
+                        <Save className="w-3.5 h-3.5" /> {editLessonId ? 'Update' : 'Add lesson'}
+                      </Button>
+                      {editLessonId && (
+                        <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Partner Logos */}
                 <div>
