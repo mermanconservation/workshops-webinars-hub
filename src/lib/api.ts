@@ -97,6 +97,16 @@ export async function getWorkshopMaterials(workshopId: string) {
   return data;
 }
 
+export async function getWorkshopLessons(workshopId: string) {
+  const { data, error } = await supabase
+    .from('workshop_lessons')
+    .select('*')
+    .eq('workshop_id', workshopId)
+    .order('order_index', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export async function getWorkshopParticipants(workshopId: string) {
   const { data, error } = await supabase
     .from('workshop_participants')
