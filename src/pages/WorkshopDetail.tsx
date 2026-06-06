@@ -18,6 +18,7 @@ const WorkshopDetail = () => {
   const [workshop, setWorkshop] = useState<any>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -35,13 +36,15 @@ const WorkshopDetail = () => {
       getWorkshopMaterials(id),
       getWorkshopParticipants(id),
       getCompanySettings(),
+      getWorkshopLessons(id),
     ])
-      .then(([w, v, m, p, c]) => {
+      .then(([w, v, m, p, c, l]) => {
         setWorkshop(w);
         setVideos(v || []);
         setMaterials(m || []);
         setParticipants(p || []);
         setCompany(c);
+        setLessons(l || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
