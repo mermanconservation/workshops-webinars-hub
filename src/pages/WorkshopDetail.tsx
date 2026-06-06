@@ -238,6 +238,47 @@ const WorkshopDetail = () => {
           </section>
         )}
 
+        {lessons.length > 0 && (
+          <section>
+            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-accent" /> Lessons
+            </h2>
+            <div className="space-y-4">
+              {lessons.map((l, idx) => {
+                const videoId = l.video_url ? extractYoutubeId(l.video_url) : null;
+                const mats = Array.isArray(l.materials) ? l.materials : [];
+                return (
+                  <div key={l.id} className="bg-card border border-border rounded-lg p-5">
+                    <div className="flex items-baseline gap-3 mb-2">
+                      <span className="text-xs font-bold text-accent">Lesson {idx + 1}</span>
+                      <h3 className="font-display font-semibold text-foreground">{l.title}</h3>
+                    </div>
+                    {l.description && (
+                      <div className="text-sm text-foreground leading-relaxed mb-3 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatDescription(l.description) }} />
+                    )}
+                    {videoId && (
+                      <div className="aspect-video rounded-md overflow-hidden mb-3">
+                        <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen title={l.title} />
+                      </div>
+                    )}
+                    {mats.length > 0 && (
+                      <div className="grid gap-2 mt-3">
+                        {mats.map((m: any, i: number) => (
+                          <a key={i} href={m.url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2 text-sm hover:shadow-forest transition-shadow">
+                            <FileText className="w-4 h-4 text-accent" />
+                            <span className="text-foreground">{m.title}</span>
+                            <Download className="w-3.5 h-3.5 ml-auto text-muted-foreground" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {videos.length > 0 && (
           <section>
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
