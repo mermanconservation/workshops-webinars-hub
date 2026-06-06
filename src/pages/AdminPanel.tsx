@@ -87,6 +87,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
+  const [editLessonId, setEditLessonId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [company, setCompany] = useState<any>(null);
