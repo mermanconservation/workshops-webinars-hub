@@ -107,6 +107,36 @@ export async function getWorkshopLessons(workshopId: string) {
   return data;
 }
 
+export async function getLessonCompletions(workshopId: string, email: string) {
+  const { data, error } = await supabase
+    .from('lesson_completions')
+    .select('*')
+    .eq('workshop_id', workshopId)
+    .eq('email', email.toLowerCase());
+  if (error) throw error;
+  return data;
+}
+
+export async function markLessonComplete(lessonId: string, workshopId: string, email: string) {
+  const { data, error } = await supabase
+    .from('lesson_completions')
+    .insert({ lesson_id: lessonId, workshop_id: workshopId, email: email.toLowerCase() })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function unmarkLessonComplete(lessonId: string, email: string) {
+  const { error } = await supabase
+    .from('lesson_completions')
+    .delete()
+    .eq('lesson_id', lessonId)
+    .eq('email', email.toLowerCase());
+  if (error) throw error;
+}
+
+
 export async function getWorkshopParticipants(workshopId: string) {
   const { data, error } = await supabase
     .from('workshop_participants')

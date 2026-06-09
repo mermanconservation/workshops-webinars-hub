@@ -91,6 +91,45 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_completions: {
+        Row: {
+          completed_at: string
+          email: string
+          id: string
+          lesson_id: string
+          workshop_id: string
+        }
+        Insert: {
+          completed_at?: string
+          email: string
+          id?: string
+          lesson_id: string
+          workshop_id: string
+        }
+        Update: {
+          completed_at?: string
+          email?: string
+          id?: string
+          lesson_id?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_completions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_completions_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presenters: {
         Row: {
           bio: string | null

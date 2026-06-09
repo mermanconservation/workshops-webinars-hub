@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
 import { Input } from '@/components/ui/input';
-import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons } from '@/lib/api';
+import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons, getLessonCompletions, markLessonComplete, unmarkLessonComplete } from '@/lib/api';
 import { generateGoogleCalendarUrl, generateICSFile } from '@/lib/calendar';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
@@ -27,6 +28,10 @@ const WorkshopDetail = () => {
   const [registering, setRegistering] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [certEmail, setCertEmail] = useState('');
+  const [progressEmail, setProgressEmail] = useState(() => localStorage.getItem('lesson_progress_email') || '');
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [courseCertLoading, setCourseCertLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -49,6 +54,105 @@ const WorkshopDetail = () => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
+
+  const loadProgress = async (email: string) => {
+    if (!id || !email.trim()) return;
+    setProgressLoading(true);
+    try {
+      const completions = await getLessonCompletions(id, email);
+      setCompletedLessonIds(new Set(completions.map((c: any) => c.lesson_id)));
+      localStorage.setItem('lesson_progress_email', email.toLowerCase());
+    } catch (e) {
+      console.error(e);
+    }
+    setProgressLoading(false);
+  };
+
+  useEffect(() => {
+    if (progressEmail && id && lessons.length > 0) {
+      loadProgress(progressEmail);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lessons.length]);
+
+  const toggleLessonComplete = async (lessonId: string, currentlyComplete: boolean) => {
+    if (!progressEmail.trim()) {
+      toast({ title: 'Enter your email above to track progress', variant: 'destructive' });
+      return;
+    }
+    try {
+      if (currentlyComplete) {
+        await unmarkLessonComplete(lessonId, progressEmail);
+        setCompletedLessonIds(prev => {
+          const n = new Set(prev);
+          n.delete(lessonId);
+          return n;
+        });
+      } else {
+        await markLessonComplete(lessonId, id!, progressEmail);
+        setCompletedLessonIds(prev => new Set(prev).add(lessonId));
+      }
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const allLessonsComplete = lessons.length > 0 && lessons.every(l => completedLessonIds.has(l.id));
+
+  const downloadCourseCompletionCertificate = async () => {
+    if (!progressEmail.trim()) {
+      toast({ title: 'Enter your email first', variant: 'destructive' });
+      return;
+    }
+    const participant = participants.find(p => p.email.toLowerCase() === progressEmail.toLowerCase());
+    const name = participant?.full_name || progressEmail;
+    setCourseCertLoading(true);
+    try {
+      const verificationCode = generateVerificationCode();
+      const { certificateText } = await generateCertificateText({
+        participantName: name,
+        workshopTitle: workshop.title,
+        workshopDate: workshop.date,
+        workshopDescription: `Successfully completed all ${lessons.length} lessons of this course. ${workshop.description || ''}`,
+        presenterName: presenterNames || 'Presenter',
+        presenterNames: presenterNamesArray,
+        signerName: company?.director_name || presenterNames || 'Director',
+        companyName: company?.company_name || 'Wildlife UK',
+        companyLogoUrl: company?.logo_url,
+        type: 'participant',
+      });
+      try {
+        await saveCertificateVerification({
+          verificationCode,
+          participantName: name,
+          workshopId: workshop.id,
+          workshopTitle: workshop.title,
+          workshopDate: workshop.date,
+          certificateType: 'course_completion',
+          companyName: company?.company_name || 'Wildlife UK',
+        });
+      } catch (e) { console.warn('Verification save failed'); }
+      await generateCertificatePDF({
+        certificateText,
+        participantName: name,
+        presenterNames: presenterNamesArray,
+        workshopTitle: workshop.title,
+        workshopDate: workshop.date,
+        signerName: company?.director_name || presenterNames || 'Director',
+        signatureUrl: company?.director_signature_url || presenters[0]?.signature_url,
+        companyName: company?.company_name || 'Wildlife UK',
+        companyLogoUrl: company?.logo_url,
+        partnerLogos: workshop.partner_logos || [],
+        type: 'course_completion',
+        verificationCode,
+      });
+      toast({ title: 'Course completion certificate downloaded!' });
+    } catch (e: any) {
+      toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
+    }
+    setCourseCertLoading(false);
+  };
+
 
   const linkedPresenters = (workshop?.workshop_presenters || [])
     .map((wp: any) => wp.presenters)
@@ -240,18 +344,56 @@ const WorkshopDetail = () => {
 
         {lessons.length > 0 && (
           <section>
-            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-accent" /> Lessons
-            </h2>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-xl font-display font-bold text-foreground flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-accent" /> Lessons
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({completedLessonIds.size}/{lessons.length} complete)
+                </span>
+              </h2>
+            </div>
+
+            <div className="bg-card border border-border rounded-lg p-4 mb-4 flex flex-wrap items-center gap-3">
+              <label className="text-xs text-muted-foreground">Track your progress:</label>
+              <Input
+                placeholder="Your email"
+                type="email"
+                value={progressEmail}
+                onChange={e => setProgressEmail(e.target.value)}
+                className="flex-1 min-w-[200px] max-w-sm h-9"
+              />
+              <Button size="sm" variant="outline" onClick={() => loadProgress(progressEmail)} disabled={progressLoading || !progressEmail.trim()}>
+                {progressLoading ? 'Loading...' : 'Load progress'}
+              </Button>
+              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent transition-all"
+                  style={{ width: `${lessons.length ? (completedLessonIds.size / lessons.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
             <div className="space-y-4">
               {lessons.map((l, idx) => {
                 const videoId = l.video_url ? extractYoutubeId(l.video_url) : null;
                 const mats = Array.isArray(l.materials) ? l.materials : [];
+                const isComplete = completedLessonIds.has(l.id);
                 return (
-                  <div key={l.id} className="bg-card border border-border rounded-lg p-5">
-                    <div className="flex items-baseline gap-3 mb-2">
-                      <span className="text-xs font-bold text-accent">Lesson {idx + 1}</span>
-                      <h3 className="font-display font-semibold text-foreground">{l.title}</h3>
+                  <div key={l.id} className={`bg-card border rounded-lg p-5 transition-colors ${isComplete ? 'border-accent/60' : 'border-border'}`}>
+                    <div className="flex items-start gap-3 mb-2">
+                      <button
+                        onClick={() => toggleLessonComplete(l.id, isComplete)}
+                        className="mt-0.5 hover:scale-110 transition-transform"
+                        title={isComplete ? 'Mark as not completed' : 'Mark as completed'}
+                      >
+                        {isComplete
+                          ? <CheckCircle2 className="w-5 h-5 text-accent" />
+                          : <Circle className="w-5 h-5 text-muted-foreground" />}
+                      </button>
+                      <div className="flex-1 flex items-baseline gap-3">
+                        <span className="text-xs font-bold text-accent">Lesson {idx + 1}</span>
+                        <h3 className={`font-display font-semibold text-foreground ${isComplete ? 'line-through opacity-70' : ''}`}>{l.title}</h3>
+                      </div>
                     </div>
                     {l.description && (
                       <div className="text-sm text-foreground leading-relaxed mb-3 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatDescription(l.description) }} />
@@ -263,21 +405,41 @@ const WorkshopDetail = () => {
                     )}
                     {mats.length > 0 && (
                       <div className="grid gap-2 mt-3">
-                        {mats.map((m: any, i: number) => (
-                          <a key={i} href={m.url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2 text-sm hover:shadow-forest transition-shadow">
-                            <FileText className="w-4 h-4 text-accent" />
-                            <span className="text-foreground">{m.title}</span>
-                            <Download className="w-3.5 h-3.5 ml-auto text-muted-foreground" />
-                          </a>
-                        ))}
+                        {mats.map((m: any, i: number) => {
+                          const t = (m.type || '').toString();
+                          const isImg = t.startsWith('image');
+                          return (
+                            <a key={i} href={m.url} target="_blank" rel="noopener" download className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2 text-sm hover:shadow-forest transition-shadow">
+                              {isImg ? <Image className="w-4 h-4 text-accent" /> : <FileText className="w-4 h-4 text-accent" />}
+                              <span className="text-foreground truncate">{m.title}</span>
+                              <Download className="w-3.5 h-3.5 ml-auto text-muted-foreground flex-shrink-0" />
+                            </a>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
+
+            {allLessonsComplete && (
+              <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <Award className="w-8 h-8" />
+                  <div>
+                    <h3 className="font-display font-bold">Course completed!</h3>
+                    <p className="text-sm opacity-90">Download your Certificate of Course Completion.</p>
+                  </div>
+                </div>
+                <Button onClick={downloadCourseCompletionCertificate} disabled={courseCertLoading} className="bg-accent text-accent-foreground hover:opacity-90 gap-2">
+                  <Download className="w-4 h-4" /> {courseCertLoading ? 'Generating...' : 'Download Certificate'}
+                </Button>
+              </div>
+            )}
           </section>
         )}
+
 
         {videos.length > 0 && (
           <section>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -273,14 +273,19 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
-  const addLessonMaterial = async (lesson: any, file: File) => {
+  const addLessonMaterial = async (lesson: any, files: FileList) => {
     try {
-      const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
       const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
-      const materials = [...existing, { title: file.name, url, type: file.type }];
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
+          return { title: file.name, url, type: file.type };
+        })
+      );
+      const materials = [...existing, ...uploads];
       await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
       if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
-      toast({ title: 'Material added to lesson' });
+      toast({ title: `${uploads.length} material${uploads.length > 1 ? 's' : ''} added` });
     } catch (e: any) {
       toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
     }
@@ -291,6 +296,23 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     const materials = existing.filter((_: any, i: number) => i !== idx);
     await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
+  const moveLesson = async (lessonId: string, direction: -1 | 1) => {
+    const idx = lessons.findIndex(l => l.id === lessonId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= lessons.length) return;
+    const a = lessons[idx];
+    const b = lessons[swapIdx];
+    try {
+      await Promise.all([
+        adminRequest('update', 'workshop_lessons', { order_index: b.order_index }, a.id, undefined, adminPwd),
+        adminRequest('update', 'workshop_lessons', { order_index: a.order_index }, b.id, undefined, adminPwd),
+      ]);
+      if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+    } catch (e: any) {
+      toast({ title: 'Reorder failed', description: e.message, variant: 'destructive' });
+    }
   };
 
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
@@ -547,7 +569,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                             {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
                             {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 items-center">
+                            <button onClick={() => moveLesson(l.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                            <button onClick={() => moveLesson(l.id, 1)} disabled={idx === lessons.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
                             <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                             <button onClick={() => deleteLesson(l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                           </div>
@@ -564,8 +588,8 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                           </div>
                         )}
                         <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
-                          <Upload className="w-3 h-3" /> Add material
-                          <input type="file" className="hidden" onChange={e => e.target.files?.[0] && addLessonMaterial(l, e.target.files[0])} />
+                          <Upload className="w-3 h-3" /> Add material(s)
+                          <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addLessonMaterial(l, e.target.files); e.target.value = ''; } }} />
                         </label>
                       </div>
                     ))}
