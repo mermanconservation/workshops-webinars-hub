@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons } from '@/lib/api';
+import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons, getLessonCompletions, markLessonComplete, unmarkLessonComplete } from '@/lib/api';
 import { generateGoogleCalendarUrl, generateICSFile } from '@/lib/calendar';
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
