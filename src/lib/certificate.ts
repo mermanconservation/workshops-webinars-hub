@@ -70,7 +70,10 @@ export async function generateCertificatePDF(data: CertificateData) {
   // Title
   pdf.setFontSize(30);
   pdf.setTextColor(15, 76, 129);
-  const title = data.type === 'presenter' ? 'CERTIFICATE OF PRESENTATION' : 'CERTIFICATE OF PARTICIPATION';
+  const title = data.certificateTitle
+    || (data.type === 'presenter' ? 'CERTIFICATE OF PRESENTATION'
+        : data.type === 'course_completion' ? 'CERTIFICATE OF COURSE COMPLETION'
+        : 'CERTIFICATE OF PARTICIPATION');
   pdf.text(title, width / 2, yPos, { align: 'center' });
   yPos += 10;
 
