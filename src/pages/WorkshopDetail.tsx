@@ -55,6 +55,105 @@ const WorkshopDetail = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const loadProgress = async (email: string) => {
+    if (!id || !email.trim()) return;
+    setProgressLoading(true);
+    try {
+      const completions = await getLessonCompletions(id, email);
+      setCompletedLessonIds(new Set(completions.map((c: any) => c.lesson_id)));
+      localStorage.setItem('lesson_progress_email', email.toLowerCase());
+    } catch (e) {
+      console.error(e);
+    }
+    setProgressLoading(false);
+  };
+
+  useEffect(() => {
+    if (progressEmail && id && lessons.length > 0) {
+      loadProgress(progressEmail);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lessons.length]);
+
+  const toggleLessonComplete = async (lessonId: string, currentlyComplete: boolean) => {
+    if (!progressEmail.trim()) {
+      toast({ title: 'Enter your email above to track progress', variant: 'destructive' });
+      return;
+    }
+    try {
+      if (currentlyComplete) {
+        await unmarkLessonComplete(lessonId, progressEmail);
+        setCompletedLessonIds(prev => {
+          const n = new Set(prev);
+          n.delete(lessonId);
+          return n;
+        });
+      } else {
+        await markLessonComplete(lessonId, id!, progressEmail);
+        setCompletedLessonIds(prev => new Set(prev).add(lessonId));
+      }
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const allLessonsComplete = lessons.length > 0 && lessons.every(l => completedLessonIds.has(l.id));
+
+  const downloadCourseCompletionCertificate = async () => {
+    if (!progressEmail.trim()) {
+      toast({ title: 'Enter your email first', variant: 'destructive' });
+      return;
+    }
+    const participant = participants.find(p => p.email.toLowerCase() === progressEmail.toLowerCase());
+    const name = participant?.full_name || progressEmail;
+    setCourseCertLoading(true);
+    try {
+      const verificationCode = generateVerificationCode();
+      const { certificateText } = await generateCertificateText({
+        participantName: name,
+        workshopTitle: workshop.title,
+        workshopDate: workshop.date,
+        workshopDescription: `Successfully completed all ${lessons.length} lessons of this course. ${workshop.description || ''}`,
+        presenterName: presenterNames || 'Presenter',
+        presenterNames: presenterNamesArray,
+        signerName: company?.director_name || presenterNames || 'Director',
+        companyName: company?.company_name || 'Wildlife UK',
+        companyLogoUrl: company?.logo_url,
+        type: 'participant',
+      });
+      try {
+        await saveCertificateVerification({
+          verificationCode,
+          participantName: name,
+          workshopId: workshop.id,
+          workshopTitle: workshop.title,
+          workshopDate: workshop.date,
+          certificateType: 'course_completion',
+          companyName: company?.company_name || 'Wildlife UK',
+        });
+      } catch (e) { console.warn('Verification save failed'); }
+      await generateCertificatePDF({
+        certificateText,
+        participantName: name,
+        presenterNames: presenterNamesArray,
+        workshopTitle: workshop.title,
+        workshopDate: workshop.date,
+        signerName: company?.director_name || presenterNames || 'Director',
+        signatureUrl: company?.director_signature_url || presenters[0]?.signature_url,
+        companyName: company?.company_name || 'Wildlife UK',
+        companyLogoUrl: company?.logo_url,
+        partnerLogos: workshop.partner_logos || [],
+        type: 'course_completion',
+        verificationCode,
+      });
+      toast({ title: 'Course completion certificate downloaded!' });
+    } catch (e: any) {
+      toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
+    }
+    setCourseCertLoading(false);
+  };
+
+
   const linkedPresenters = (workshop?.workshop_presenters || [])
     .map((wp: any) => wp.presenters)
     .filter(Boolean);
