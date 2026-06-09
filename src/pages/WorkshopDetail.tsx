@@ -28,6 +28,10 @@ const WorkshopDetail = () => {
   const [registering, setRegistering] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [certEmail, setCertEmail] = useState('');
+  const [progressEmail, setProgressEmail] = useState(() => localStorage.getItem('lesson_progress_email') || '');
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [courseCertLoading, setCourseCertLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
