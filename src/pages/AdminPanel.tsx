@@ -273,14 +273,19 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
-  const addLessonMaterial = async (lesson: any, file: File) => {
+  const addLessonMaterial = async (lesson: any, files: FileList) => {
     try {
-      const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
       const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
-      const materials = [...existing, { title: file.name, url, type: file.type }];
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
+          return { title: file.name, url, type: file.type };
+        })
+      );
+      const materials = [...existing, ...uploads];
       await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
       if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
-      toast({ title: 'Material added to lesson' });
+      toast({ title: `${uploads.length} material${uploads.length > 1 ? 's' : ''} added` });
     } catch (e: any) {
       toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
     }
@@ -291,6 +296,23 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     const materials = existing.filter((_: any, i: number) => i !== idx);
     await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
+  const moveLesson = async (lessonId: string, direction: -1 | 1) => {
+    const idx = lessons.findIndex(l => l.id === lessonId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= lessons.length) return;
+    const a = lessons[idx];
+    const b = lessons[swapIdx];
+    try {
+      await Promise.all([
+        adminRequest('update', 'workshop_lessons', { order_index: b.order_index }, a.id, undefined, adminPwd),
+        adminRequest('update', 'workshop_lessons', { order_index: a.order_index }, b.id, undefined, adminPwd),
+      ]);
+      if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+    } catch (e: any) {
+      toast({ title: 'Reorder failed', description: e.message, variant: 'destructive' });
+    }
   };
 
   const generateCert = async (name: string, type: 'participant' | 'presenter') => {
