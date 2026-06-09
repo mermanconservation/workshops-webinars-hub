@@ -12,9 +12,10 @@ interface CertificateData {
   companyName: string;
   companyLogoUrl?: string;
   partnerLogos?: string[];
-  type: 'participant' | 'presenter';
+  type: 'participant' | 'presenter' | 'course_completion';
   verificationCode?: string;
   verificationUrl?: string;
+  certificateTitle?: string;
 }
 
 export async function generateCertificatePDF(data: CertificateData) {
