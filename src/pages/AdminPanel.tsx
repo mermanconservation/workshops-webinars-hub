@@ -586,8 +586,8 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                           </div>
                         )}
                         <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
-                          <Upload className="w-3 h-3" /> Add material
-                          <input type="file" className="hidden" onChange={e => e.target.files?.[0] && addLessonMaterial(l, e.target.files[0])} />
+                          <Upload className="w-3 h-3" /> Add material(s)
+                          <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addLessonMaterial(l, e.target.files); e.target.value = ''; } }} />
                         </label>
                       </div>
                     ))}
