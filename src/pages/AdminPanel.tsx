@@ -569,7 +569,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                             {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
                             {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 items-center">
+                            <button onClick={() => moveLesson(l.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                            <button onClick={() => moveLesson(l.id, 1)} disabled={idx === lessons.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
                             <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                             <button onClick={() => deleteLesson(l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                           </div>
