@@ -136,10 +136,6 @@ export async function unmarkLessonComplete(lessonId: string, email: string) {
   if (error) throw error;
 }
 
-export async function reorderLesson(lessonId: string, newIndex: number) {
-  // Goes through admin function path
-  return adminRequest('update', 'workshop_lessons', { order_index: newIndex }, lessonId, undefined, '');
-}
 
 export async function getWorkshopParticipants(workshopId: string) {
   const { data, error } = await supabase
