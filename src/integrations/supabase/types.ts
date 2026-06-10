@@ -91,6 +91,39 @@ export type Database = {
         }
         Relationships: []
       }
+      courses: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          materials: Json
+          order_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          materials?: Json
+          order_index?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          materials?: Json
+          order_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lesson_completions: {
         Row: {
           completed_at: string
