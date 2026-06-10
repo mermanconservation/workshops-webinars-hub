@@ -12,7 +12,7 @@ import { CertificatePreview } from '@/components/CertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
-type Tab = 'workshops' | 'presenters' | 'settings';
+type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
 const AdminPanel = () => {
   const [authenticated, setAuthenticated] = useState(false);
@@ -59,7 +59,7 @@ const AdminPanel = () => {
       </div>
 
       <div className="flex border-b border-border bg-card">
-        {(['workshops', 'presenters', 'settings'] as Tab[]).map(t => (
+        {(['workshops', 'courses', 'presenters', 'settings'] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)} className={`px-6 py-3 text-sm font-medium capitalize transition-colors ${tab === t ? 'border-b-2 border-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
             {t === 'workshops' ? 'Events' : t}
           </button>
@@ -68,6 +68,7 @@ const AdminPanel = () => {
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         {tab === 'workshops' && <WorkshopsTab adminPwd={adminPwd} />}
+        {tab === 'courses' && <CoursesTab adminPwd={adminPwd} />}
         {tab === 'presenters' && <PresentersTab adminPwd={adminPwd} />}
         {tab === 'settings' && <SettingsTab adminPwd={adminPwd} />}
       </div>
