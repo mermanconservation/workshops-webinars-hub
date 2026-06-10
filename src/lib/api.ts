@@ -107,6 +107,15 @@ export async function getWorkshopLessons(workshopId: string) {
   return data;
 }
 
+export async function getCourses() {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .order('order_index', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export async function getLessonCompletions(workshopId: string, email: string) {
   const { data, error } = await supabase
     .from('lesson_completions')

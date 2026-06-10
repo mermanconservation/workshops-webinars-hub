@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 
 interface CertificateData {
   certificateText: string;
@@ -185,12 +186,19 @@ export async function generateCertificatePDF(data: CertificateData) {
   pdf.setTextColor(100, 100, 100);
   pdf.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), sigX + 15, bottomY + 11, { align: 'center' });
 
-  // Verification code inside frame (bottom center) - moved up to avoid frame lines
+  // Verification code + QR code inside frame (bottom center)
   if (data.verificationCode) {
+    const verifUrl = data.verificationUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/verify?code=${data.verificationCode}`;
+    try {
+      const qrDataUrl = await QRCode.toDataURL(verifUrl, { margin: 0, width: 200 });
+      pdf.addImage(qrDataUrl, 'PNG', width / 2 - 9, height - 36, 18, 18);
+    } catch (e) {
+      console.warn('Could not generate QR code', e);
+    }
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(150, 150, 150);
-    pdf.text(`Verification: ${data.verificationCode}`, width / 2, height - 22, { align: 'center' });
+    pdf.text(`Verify: ${data.verificationCode}`, width / 2, height - 17, { align: 'center' });
   }
 
   // Bottom decorative lines
