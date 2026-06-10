@@ -299,6 +299,15 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
   };
 
+  const moveLessonMaterial = async (lesson: any, idx: number, direction: -1 | 1) => {
+    const existing = Array.isArray(lesson.materials) ? [...lesson.materials] : [];
+    const swap = idx + direction;
+    if (swap < 0 || swap >= existing.length) return;
+    [existing[idx], existing[swap]] = [existing[swap], existing[idx]];
+    await adminRequest('update', 'workshop_lessons', { materials: existing }, lesson.id, undefined, adminPwd);
+    if (selectedWorkshop) loadWorkshopDetails(selectedWorkshop);
+  };
+
   const moveLesson = async (lessonId: string, direction: -1 | 1) => {
     const idx = lessons.findIndex(l => l.id === lessonId);
     const swapIdx = idx + direction;
@@ -580,10 +589,12 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                         {Array.isArray(l.materials) && l.materials.length > 0 && (
                           <div className="mt-2 space-y-1">
                             {l.materials.map((m: any, i: number) => (
-                              <div key={i} className="flex items-center gap-2 text-xs">
-                                <FileText className="w-3 h-3 text-accent" />
+                              <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
+                                <FileText className="w-3 h-3 text-accent flex-shrink-0" />
                                 <span className="flex-1 truncate text-muted-foreground">{m.title}</span>
-                                <button onClick={() => removeLessonMaterial(l, i)}><X className="w-3 h-3 text-destructive" /></button>
+                                <button onClick={() => moveLessonMaterial(l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => moveLessonMaterial(l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => removeLessonMaterial(l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
                               </div>
                             ))}
                           </div>
