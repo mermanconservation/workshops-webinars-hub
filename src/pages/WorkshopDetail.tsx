@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
 import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons, getLessonCompletions, markLessonComplete, unmarkLessonComplete } from '@/lib/api';
@@ -32,6 +33,8 @@ const WorkshopDetail = () => {
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [progressLoading, setProgressLoading] = useState(false);
   const [courseCertLoading, setCourseCertLoading] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailModalValue, setEmailModalValue] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -69,11 +72,23 @@ const WorkshopDetail = () => {
   };
 
   useEffect(() => {
-    if (progressEmail && id && lessons.length > 0) {
+    if (!id || lessons.length === 0) return;
+    if (progressEmail) {
       loadProgress(progressEmail);
+    } else {
+      setEmailModalOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, lessons.length]);
+
+  const submitEmailModal = async () => {
+    const e = emailModalValue.trim();
+    if (!e) return;
+    setProgressEmail(e);
+    setEmailModalOpen(false);
+    await loadProgress(e);
+  };
+
 
   const toggleLessonComplete = async (lessonId: string, currentlyComplete: boolean) => {
     if (!progressEmail.trim()) {
@@ -515,6 +530,31 @@ const WorkshopDetail = () => {
           </section>
         )}
       </main>
+
+      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Track your lesson progress</DialogTitle>
+            <DialogDescription>
+              Enter your email and we'll automatically load your saved progress for this course. Your progress will sync across devices.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="your@email.com"
+            type="email"
+            value={emailModalValue}
+            onChange={e => setEmailModalValue(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && submitEmailModal()}
+            autoFocus
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setEmailModalOpen(false)}>Skip for now</Button>
+            <Button onClick={submitEmailModal} disabled={!emailModalValue.trim()} className="bg-accent text-accent-foreground hover:opacity-90">
+              Load my progress
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
