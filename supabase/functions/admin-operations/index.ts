@@ -31,7 +31,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const allowedTables = ['workshops', 'presenters', 'company_settings', 'workshop_videos', 'workshop_materials', 'workshop_participants', 'certificate_verifications', 'workshop_presenters'];
+    const allowedTables = ['workshops', 'presenters', 'company_settings', 'workshop_videos', 'workshop_materials', 'workshop_participants', 'certificate_verifications', 'workshop_presenters', 'workshop_lessons', 'courses'];
     if (!allowedTables.includes(table)) throw new Error('Invalid table');
 
     let result;
