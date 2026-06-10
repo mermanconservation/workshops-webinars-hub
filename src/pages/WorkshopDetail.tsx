@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Download, ExternalLink, Play, FileText, Image, Award, ListOrdered, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
 import { getWorkshop, getWorkshopVideos, getWorkshopMaterials, getWorkshopParticipants, getCompanySettings, saveCertificateVerification, getWorkshopLessons, getLessonCompletions, markLessonComplete, unmarkLessonComplete } from '@/lib/api';
@@ -32,6 +33,8 @@ const WorkshopDetail = () => {
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [progressLoading, setProgressLoading] = useState(false);
   const [courseCertLoading, setCourseCertLoading] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailModalValue, setEmailModalValue] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -69,11 +72,23 @@ const WorkshopDetail = () => {
   };
 
   useEffect(() => {
-    if (progressEmail && id && lessons.length > 0) {
+    if (!id || lessons.length === 0) return;
+    if (progressEmail) {
       loadProgress(progressEmail);
+    } else {
+      setEmailModalOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, lessons.length]);
+
+  const submitEmailModal = async () => {
+    const e = emailModalValue.trim();
+    if (!e) return;
+    setProgressEmail(e);
+    setEmailModalOpen(false);
+    await loadProgress(e);
+  };
+
 
   const toggleLessonComplete = async (lessonId: string, currentlyComplete: boolean) => {
     if (!progressEmail.trim()) {
