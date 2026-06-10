@@ -530,6 +530,31 @@ const WorkshopDetail = () => {
           </section>
         )}
       </main>
+
+      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Track your lesson progress</DialogTitle>
+            <DialogDescription>
+              Enter your email and we'll automatically load your saved progress for this course. Your progress will sync across devices.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="your@email.com"
+            type="email"
+            value={emailModalValue}
+            onChange={e => setEmailModalValue(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && submitEmailModal()}
+            autoFocus
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setEmailModalOpen(false)}>Skip for now</Button>
+            <Button onClick={submitEmailModal} disabled={!emailModalValue.trim()} className="bg-accent text-accent-foreground hover:opacity-90">
+              Load my progress
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
