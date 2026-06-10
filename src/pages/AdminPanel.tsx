@@ -1069,4 +1069,177 @@ function SettingsTab({ adminPwd }: { adminPwd: string }) {
   );
 }
 
+function CoursesTab({ adminPwd }: { adminPwd: string }) {
+  const { toast } = useToast();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: '', description: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const cs = await adminRequest('list', 'courses', undefined, undefined, { order: { column: 'order_index', ascending: true } }, adminPwd);
+      setCourses(cs || []);
+    } catch (e: any) {
+      toast({ title: 'Load failed', description: e.message, variant: 'destructive' });
+    }
+    setLoading(false);
+  }, [adminPwd, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const saveCourse = async () => {
+    if (!form.title.trim()) {
+      toast({ title: 'Title is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      if (editId) {
+        await adminRequest('update', 'courses', { title: form.title, description: form.description || null }, editId, undefined, adminPwd);
+      } else {
+        await adminRequest('insert', 'courses', { title: form.title, description: form.description || null, order_index: courses.length }, undefined, undefined, adminPwd);
+      }
+      setShowForm(false);
+      setEditId(null);
+      setForm({ title: '', description: '' });
+      load();
+      toast({ title: editId ? 'Course updated' : 'Course created' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteCourse = async (id: string) => {
+    if (!confirm('Delete this course?')) return;
+    await adminRequest('delete', 'courses', undefined, id, undefined, adminPwd);
+    load();
+  };
+
+  const addMaterials = async (course: any, files: FileList) => {
+    try {
+      const existing = Array.isArray(course.materials) ? course.materials : [];
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const url = await uploadFile(file, `course-materials/${course.id}`);
+          return { title: file.name, url, type: file.type };
+        })
+      );
+      const materials = [...existing, ...uploads];
+      await adminRequest('update', 'courses', { materials }, course.id, undefined, adminPwd);
+      load();
+      toast({ title: `${uploads.length} material${uploads.length > 1 ? 's' : ''} added` });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const removeMaterial = async (course: any, idx: number) => {
+    const existing = Array.isArray(course.materials) ? course.materials : [];
+    const materials = existing.filter((_: any, i: number) => i !== idx);
+    await adminRequest('update', 'courses', { materials }, course.id, undefined, adminPwd);
+    load();
+  };
+
+  const moveMaterial = async (course: any, idx: number, direction: -1 | 1) => {
+    const existing = Array.isArray(course.materials) ? [...course.materials] : [];
+    const swap = idx + direction;
+    if (swap < 0 || swap >= existing.length) return;
+    [existing[idx], existing[swap]] = [existing[swap], existing[idx]];
+    await adminRequest('update', 'courses', { materials: existing }, course.id, undefined, adminPwd);
+    load();
+  };
+
+  const moveCourse = async (id: string, direction: -1 | 1) => {
+    const idx = courses.findIndex(c => c.id === id);
+    const swap = idx + direction;
+    if (idx < 0 || swap < 0 || swap >= courses.length) return;
+    const a = courses[idx], b = courses[swap];
+    await Promise.all([
+      adminRequest('update', 'courses', { order_index: b.order_index }, a.id, undefined, adminPwd),
+      adminRequest('update', 'courses', { order_index: a.order_index }, b.id, undefined, adminPwd),
+    ]);
+    load();
+  };
+
+  if (loading) return <p className="text-muted-foreground">Loading...</p>;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-display font-bold text-foreground">Courses</h2>
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
+          <Plus className="w-4 h-4" /> Add Course
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-card border border-border rounded-lg p-6 mb-6 overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-display font-semibold">{editId ? 'Edit' : 'New'} Course</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+            <Input placeholder="Course title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mb-4" />
+            <Textarea placeholder="Course description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} />
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveCourse} className="bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {courses.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No courses yet. Add your first course to start uploading materials.</p>
+      ) : (
+        <div className="grid gap-3">
+          {courses.map((c, idx) => (
+            <div key={c.id} className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">{c.title}</h3>
+                  {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{c.description}</p>}
+                </div>
+                <div className="flex gap-1 items-center">
+                  <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
+                  <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
+                  <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-foreground flex items-center gap-1"><FileText className="w-3.5 h-3.5 text-accent" /> Materials</h4>
+                  <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-accent hover:underline">
+                    <Upload className="w-3 h-3" /> Add files
+                    <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addMaterials(c, e.target.files); e.target.value = ''; } }} />
+                  </label>
+                </div>
+                {Array.isArray(c.materials) && c.materials.length > 0 ? (
+                  <div className="space-y-1">
+                    {c.materials.map((m: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
+                        <FileText className="w-3 h-3 text-accent flex-shrink-0" />
+                        <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
+                        <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                        <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                        <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No materials yet.</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default AdminPanel;
