@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Monitor, Wrench, Home } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, ArrowRight, ShieldCheck, Monitor, Wrench, Home, GraduationCap, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getWorkshops, getCompanySettings } from '@/lib/api';
+import { getWorkshops, getCompanySettings, getCourses } from '@/lib/api';
 import { format } from 'date-fns';
 
 const Index = () => {
   const [workshops, setWorkshops] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getWorkshops(), getCompanySettings()])
-      .then(([ws, cs]) => {
+    Promise.all([getWorkshops(), getCompanySettings(), getCourses()])
+      .then(([ws, cs, cr]) => {
         setWorkshops(ws || []);
         setCompany(cs);
+        setCourses(cr || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
