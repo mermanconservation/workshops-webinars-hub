@@ -116,6 +116,26 @@ export async function getCourses() {
   return data;
 }
 
+export async function getCourse(id: string) {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getCourseLessons(courseId: string) {
+  const { data, error } = await supabase
+    .from('workshop_lessons')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('order_index', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export async function getLessonCompletions(workshopId: string, email: string) {
   const { data, error } = await supabase
     .from('lesson_completions')
@@ -126,10 +146,30 @@ export async function getLessonCompletions(workshopId: string, email: string) {
   return data;
 }
 
+export async function getCourseLessonCompletions(courseId: string, email: string) {
+  const { data, error } = await supabase
+    .from('lesson_completions')
+    .select('*')
+    .eq('course_id', courseId)
+    .eq('email', email.toLowerCase());
+  if (error) throw error;
+  return data;
+}
+
 export async function markLessonComplete(lessonId: string, workshopId: string, email: string) {
   const { data, error } = await supabase
     .from('lesson_completions')
     .insert({ lesson_id: lessonId, workshop_id: workshopId, email: email.toLowerCase() })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function markCourseLessonComplete(lessonId: string, courseId: string, email: string) {
+  const { data, error } = await supabase
+    .from('lesson_completions')
+    .insert({ lesson_id: lessonId, course_id: courseId, email: email.toLowerCase() })
     .select()
     .single();
   if (error) throw error;

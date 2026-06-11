@@ -1072,10 +1072,24 @@ function SettingsTab({ adminPwd }: { adminPwd: string }) {
 function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const { toast } = useToast();
   const [courses, setCourses] = useState<any[]>([]);
+  const [lessonsByCourse, setLessonsByCourse] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '' });
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+  const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
+  const [editLessonId, setEditLessonId] = useState<string | null>(null);
+
+  const loadLessons = async (courseId: string) => {
+    try {
+      const { getCourseLessons } = await import('@/lib/api');
+      const ls = await getCourseLessons(courseId);
+      setLessonsByCourse(prev => ({ ...prev, [courseId]: ls || [] }));
+    } catch (e: any) {
+      toast({ title: 'Failed to load lessons', variant: 'destructive' });
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1112,7 +1126,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const deleteCourse = async (id: string) => {
-    if (!confirm('Delete this course?')) return;
+    if (!confirm('Delete this course? Lessons inside will also be removed.')) return;
     await adminRequest('delete', 'courses', undefined, id, undefined, adminPwd);
     load();
   };
@@ -1163,6 +1177,97 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
+  const toggleExpand = (courseId: string) => {
+    if (expandedCourse === courseId) {
+      setExpandedCourse(null);
+    } else {
+      setExpandedCourse(courseId);
+      loadLessons(courseId);
+      setEditLessonId(null);
+      setLessonForm({ title: '', description: '', video_url: '' });
+    }
+  };
+
+  const saveLesson = async (courseId: string) => {
+    if (!lessonForm.title.trim()) {
+      toast({ title: 'Lesson title is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      const data: any = {
+        title: lessonForm.title,
+        description: lessonForm.description || null,
+        video_url: lessonForm.video_url || null,
+      };
+      if (editLessonId) {
+        await adminRequest('update', 'workshop_lessons', data, editLessonId, undefined, adminPwd);
+      } else {
+        data.course_id = courseId;
+        data.order_index = (lessonsByCourse[courseId] || []).length;
+        await adminRequest('insert', 'workshop_lessons', data, undefined, undefined, adminPwd);
+      }
+      setLessonForm({ title: '', description: '', video_url: '' });
+      setEditLessonId(null);
+      loadLessons(courseId);
+      toast({ title: editLessonId ? 'Lesson updated' : 'Lesson added' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteLesson = async (courseId: string, id: string) => {
+    if (!confirm('Delete this lesson?')) return;
+    await adminRequest('delete', 'workshop_lessons', undefined, id, undefined, adminPwd);
+    loadLessons(courseId);
+  };
+
+  const moveLesson = async (courseId: string, lessonId: string, direction: -1 | 1) => {
+    const lessons = lessonsByCourse[courseId] || [];
+    const idx = lessons.findIndex(l => l.id === lessonId);
+    const swap = idx + direction;
+    if (idx < 0 || swap < 0 || swap >= lessons.length) return;
+    const a = lessons[idx], b = lessons[swap];
+    await Promise.all([
+      adminRequest('update', 'workshop_lessons', { order_index: b.order_index }, a.id, undefined, adminPwd),
+      adminRequest('update', 'workshop_lessons', { order_index: a.order_index }, b.id, undefined, adminPwd),
+    ]);
+    loadLessons(courseId);
+  };
+
+  const addLessonMaterial = async (courseId: string, lesson: any, files: FileList) => {
+    try {
+      const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const url = await uploadFile(file, `lesson-materials/${lesson.id}`);
+          return { title: file.name, url, type: file.type };
+        })
+      );
+      const materials = [...existing, ...uploads];
+      await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
+      loadLessons(courseId);
+      toast({ title: `${uploads.length} material${uploads.length > 1 ? 's' : ''} added` });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const removeLessonMaterial = async (courseId: string, lesson: any, idx: number) => {
+    const existing = Array.isArray(lesson.materials) ? lesson.materials : [];
+    const materials = existing.filter((_: any, i: number) => i !== idx);
+    await adminRequest('update', 'workshop_lessons', { materials }, lesson.id, undefined, adminPwd);
+    loadLessons(courseId);
+  };
+
+  const moveLessonMaterial = async (courseId: string, lesson: any, idx: number, direction: -1 | 1) => {
+    const existing = Array.isArray(lesson.materials) ? [...lesson.materials] : [];
+    const swap = idx + direction;
+    if (swap < 0 || swap >= existing.length) return;
+    [existing[idx], existing[swap]] = [existing[swap], existing[idx]];
+    await adminRequest('update', 'workshop_lessons', { materials: existing }, lesson.id, undefined, adminPwd);
+    loadLessons(courseId);
+  };
+
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
 
   return (
@@ -1192,50 +1297,115 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
       </AnimatePresence>
 
       {courses.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No courses yet. Add your first course to start uploading materials.</p>
+        <p className="text-muted-foreground text-sm">No courses yet. Add your first course to start uploading materials and lessons.</p>
       ) : (
         <div className="grid gap-3">
-          {courses.map((c, idx) => (
-            <div key={c.id} className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">{c.title}</h3>
-                  {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{c.description}</p>}
-                </div>
-                <div className="flex gap-1 items-center">
-                  <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
-                  <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
-                  <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-semibold text-foreground flex items-center gap-1"><FileText className="w-3.5 h-3.5 text-accent" /> Materials</h4>
-                  <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-accent hover:underline">
-                    <Upload className="w-3 h-3" /> Add files
-                    <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addMaterials(c, e.target.files); e.target.value = ''; } }} />
-                  </label>
-                </div>
-                {Array.isArray(c.materials) && c.materials.length > 0 ? (
-                  <div className="space-y-1">
-                    {c.materials.map((m: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
-                        <FileText className="w-3 h-3 text-accent flex-shrink-0" />
-                        <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
-                        <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
-                        <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
-                        <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
-                      </div>
-                    ))}
+          {courses.map((c, idx) => {
+            const lessons = lessonsByCourse[c.id] || [];
+            const isExpanded = expandedCourse === c.id;
+            return (
+              <div key={c.id} className={`bg-card border rounded-lg p-4 transition-colors ${isExpanded ? 'border-accent' : 'border-border'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 cursor-pointer" onClick={() => toggleExpand(c.id)}>
+                    <h3 className="font-semibold text-foreground">{c.title}</h3>
+                    {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{c.description}</p>}
                   </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No materials yet.</p>
+                  <div className="flex gap-1 items-center">
+                    <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
+                    <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t border-border space-y-6">
+                    {/* Course Materials */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1"><FileText className="w-4 h-4 text-accent" /> Course Materials</h4>
+                        <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-accent hover:underline">
+                          <Upload className="w-3 h-3" /> Add files
+                          <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addMaterials(c, e.target.files); e.target.value = ''; } }} />
+                        </label>
+                      </div>
+                      {Array.isArray(c.materials) && c.materials.length > 0 ? (
+                        <div className="space-y-1">
+                          {c.materials.map((m: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
+                              <FileText className="w-3 h-3 text-accent flex-shrink-0" />
+                              <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
+                              <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                              <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                              <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No materials yet.</p>
+                      )}
+                    </div>
+
+                    {/* Lessons */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                      <div className="space-y-3 mb-3">
+                        {lessons.map((l, lidx) => (
+                          <div key={l.id} className="bg-background border border-border rounded-md p-3">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex-1">
+                                <div className="text-xs text-accent font-semibold">Lesson {lidx + 1}</div>
+                                <div className="text-sm font-medium text-foreground">{l.title}</div>
+                                {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
+                                {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <button onClick={() => moveLesson(c.id, l.id, -1)} disabled={lidx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                                <button onClick={() => moveLesson(c.id, l.id, 1)} disabled={lidx === lessons.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                                <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                                <button onClick={() => deleteLesson(c.id, l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                              </div>
+                            </div>
+                            {Array.isArray(l.materials) && l.materials.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {l.materials.map((m: any, i: number) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
+                                    <FileText className="w-3 h-3 text-accent flex-shrink-0" />
+                                    <span className="flex-1 truncate text-muted-foreground">{m.title}</span>
+                                    <button onClick={() => moveLessonMaterial(c.id, l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                    <button onClick={() => moveLessonMaterial(c.id, l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                    <button onClick={() => removeLessonMaterial(c.id, l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
+                              <Upload className="w-3 h-3" /> Add material(s)
+                              <input type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) { addLessonMaterial(c.id, l, e.target.files); e.target.value = ''; } }} />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="bg-background border border-border rounded-md p-3 space-y-2">
+                        <div className="text-xs font-semibold text-foreground">{editLessonId ? 'Edit lesson' : 'New lesson'}</div>
+                        <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
+                        <Textarea placeholder="Lesson notes / description" value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={3} className="text-sm" />
+                        <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => saveLesson(c.id)} className="bg-accent text-accent-foreground gap-1">
+                            <Save className="w-3.5 h-3.5" /> {editLessonId ? 'Update' : 'Add lesson'}
+                          </Button>
+                          {editLessonId && (
+                            <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
