@@ -92,6 +92,44 @@ const Index = () => {
               </section>
             )}
 
+            {/* Courses */}
+            {courses.length > 0 && (
+              <section className="mb-16">
+                <h2 className="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
+                  <GraduationCap className="w-6 h-6 text-accent" /> Online Courses
+                </h2>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {courses.map((c, i) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <Link
+                        to={`/course/${c.id}`}
+                        className="block bg-card border border-border rounded-lg p-6 hover:shadow-forest transition-all duration-300 group h-full"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/20 text-accent-foreground flex items-center gap-1">
+                            <BookOpen className="w-3 h-3" /> Course
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                        </div>
+                        <h3 className="text-lg font-display font-semibold text-foreground mb-2 group-hover:text-forest-light transition-colors">
+                          {c.title}
+                        </h3>
+                        {c.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-3">{c.description}</p>
+                        )}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+
             {/* Past Workshops */}
             {pastWorkshops.length > 0 && (
               <EventSection title="Past Workshops" icon={<Wrench className="w-6 h-6 text-accent" />} events={pastWorkshops} isPast />
