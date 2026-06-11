@@ -9,6 +9,7 @@ import WorkshopDetail from "./pages/WorkshopDetail";
 import AdminPanel from "./pages/AdminPanel";
 import VerifyCertificate from "./pages/VerifyCertificate";
 import NotFound from "./pages/NotFound";
+import CourseDetail from "./pages/CourseDetail";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workshop/:id" element={<WorkshopDetail />} />
+          <Route path="/course/:id" element={<CourseDetail />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/verify" element={<VerifyCertificate />} />
           <Route path="*" element={<NotFound />} />
