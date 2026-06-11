@@ -127,26 +127,36 @@ export type Database = {
       lesson_completions: {
         Row: {
           completed_at: string
+          course_id: string | null
           email: string
           id: string
           lesson_id: string
-          workshop_id: string
+          workshop_id: string | null
         }
         Insert: {
           completed_at?: string
+          course_id?: string | null
           email: string
           id?: string
           lesson_id: string
-          workshop_id: string
+          workshop_id?: string | null
         }
         Update: {
           completed_at?: string
+          course_id?: string | null
           email?: string
           id?: string
           lesson_id?: string
-          workshop_id?: string
+          workshop_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lesson_completions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lesson_completions_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -198,6 +208,7 @@ export type Database = {
       }
       workshop_lessons: {
         Row: {
+          course_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -206,9 +217,10 @@ export type Database = {
           title: string
           updated_at: string
           video_url: string | null
-          workshop_id: string
+          workshop_id: string | null
         }
         Insert: {
+          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -217,9 +229,10 @@ export type Database = {
           title: string
           updated_at?: string
           video_url?: string | null
-          workshop_id: string
+          workshop_id?: string | null
         }
         Update: {
+          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -228,9 +241,16 @@ export type Database = {
           title?: string
           updated_at?: string
           video_url?: string | null
-          workshop_id?: string
+          workshop_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "workshop_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workshop_lessons_workshop_id_fkey"
             columns: ["workshop_id"]
