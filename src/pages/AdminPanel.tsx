@@ -1176,7 +1176,17 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
-  const moveCourse = async (id: string, direction: -1 | 1) => {
+  const renameMaterial = async (course: any, idx: number) => {
+    const existing = Array.isArray(course.materials) ? [...course.materials] : [];
+    const current = existing[idx];
+    if (!current) return;
+    const newTitle = window.prompt('Material title', current.title);
+    if (newTitle === null) return;
+    existing[idx] = { ...current, title: newTitle.trim() || current.title };
+    await adminRequest('update', 'courses', { materials: existing }, course.id, undefined, adminPwd);
+    load();
+  };
+
     const idx = courses.findIndex(c => c.id === id);
     const swap = idx + direction;
     if (idx < 0 || swap < 0 || swap >= courses.length) return;
