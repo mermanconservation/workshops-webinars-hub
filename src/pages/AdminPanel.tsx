@@ -1306,11 +1306,18 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
             return (
               <div key={c.id} className={`bg-card border rounded-lg p-4 transition-colors ${isExpanded ? 'border-accent' : 'border-border'}`}>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 cursor-pointer" onClick={() => toggleExpand(c.id)}>
-                    <h3 className="font-semibold text-foreground">{c.title}</h3>
-                    {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{c.description}</p>}
-                  </div>
+                  <button onClick={() => toggleExpand(c.id)} className="flex items-start gap-2 flex-1 text-left">
+                    {isExpanded ? <ChevronDown className="w-4 h-4 mt-1 text-accent flex-shrink-0" /> : <ChevronRight className="w-4 h-4 mt-1 text-muted-foreground flex-shrink-0" />}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground">{c.title}</h3>
+                      {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{c.description}</p>}
+                      <p className="text-xs text-accent mt-1">{Array.isArray(c.materials) ? c.materials.length : 0} material(s) · {(lessonsByCourse[c.id] || []).length} lesson(s) {!isExpanded && '— click to manage'}</p>
+                    </div>
+                  </button>
                   <div className="flex gap-1 items-center">
+                    <Button variant="outline" size="sm" onClick={() => toggleExpand(c.id)} className="gap-1 text-xs">
+                      <FileText className="w-3.5 h-3.5" /> {isExpanded ? 'Close' : 'Materials & Lessons'}
+                    </Button>
                     <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
                     <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
