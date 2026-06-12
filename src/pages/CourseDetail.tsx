@@ -3,8 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Download, FileText, Image as ImageIcon, BookOpen, CheckCircle2, Circle, Award, File, Presentation, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
 
 function materialIcon(type: string = '') {
   if (type.startsWith('image')) return ImageIcon;
