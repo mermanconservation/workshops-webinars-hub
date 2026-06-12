@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, FileText, Image as ImageIcon, BookOpen, CheckCircle2, Circle, Award } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Image as ImageIcon, BookOpen, CheckCircle2, Circle, Award, File, Presentation, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+function materialIcon(type: string = '') {
+  if (type.startsWith('image')) return ImageIcon;
+  if (type.includes('pdf')) return FileText;
+  if (type.includes('presentation') || type.includes('powerpoint') || type.includes('keynote')) return Presentation;
+  if (type.includes('word') || type.includes('document') || type.includes('text')) return FileText;
+  return File;
+}
+
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
