@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp } from 'lucide-react';
+import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
+
+function materialIconFor(type: string = '') {
+  if (type.startsWith('image')) return ImageIcon;
+  if (type.includes('pdf')) return FileText;
+  if (type.includes('presentation') || type.includes('powerpoint') || type.includes('keynote')) return Presentation;
+  if (type.includes('word') || type.includes('document') || type.includes('text')) return FileText;
+  return FileIcon;
+}
+
+
 
 const AdminPanel = () => {
   const [authenticated, setAuthenticated] = useState(false);
@@ -1165,6 +1176,17 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
+  const renameMaterial = async (course: any, idx: number) => {
+    const existing = Array.isArray(course.materials) ? [...course.materials] : [];
+    const current = existing[idx];
+    if (!current) return;
+    const newTitle = window.prompt('Material title', current.title);
+    if (newTitle === null) return;
+    existing[idx] = { ...current, title: newTitle.trim() || current.title };
+    await adminRequest('update', 'courses', { materials: existing }, course.id, undefined, adminPwd);
+    load();
+  };
+
   const moveCourse = async (id: string, direction: -1 | 1) => {
     const idx = courses.findIndex(c => c.id === id);
     const swap = idx + direction;
@@ -1268,15 +1290,123 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     loadLessons(courseId);
   };
 
+  const renameLessonMaterial = async (courseId: string, lesson: any, idx: number) => {
+    const existing = Array.isArray(lesson.materials) ? [...lesson.materials] : [];
+    const current = existing[idx];
+    if (!current) return;
+    const newTitle = window.prompt('Material title', current.title);
+    if (newTitle === null) return;
+    existing[idx] = { ...current, title: newTitle.trim() || current.title };
+    await adminRequest('update', 'workshop_lessons', { materials: existing }, lesson.id, undefined, adminPwd);
+    loadLessons(courseId);
+  };
+
+  const importJsonLesson = async (courseId: string) => {
+    const raw = window.prompt('Paste lesson JSON. Expected fields: title (required), description (HTML), video_url, materials [{title,url,type}]');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const lessonsArr = Array.isArray(parsed) ? parsed : [parsed];
+      const existingCount = (lessonsByCourse[courseId] || []).length;
+      for (let i = 0; i < lessonsArr.length; i++) {
+        const l = lessonsArr[i];
+        if (!l.title) throw new Error('Each lesson needs a "title"');
+        await adminRequest('insert', 'workshop_lessons', {
+          course_id: courseId,
+          title: String(l.title),
+          description: l.description || null,
+          video_url: l.video_url || null,
+          materials: Array.isArray(l.materials) ? l.materials : [],
+          order_index: existingCount + i,
+        }, undefined, undefined, adminPwd);
+      }
+      loadLessons(courseId);
+      toast({ title: `Imported ${lessonsArr.length} lesson(s)` });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const exportCourseJson = async (course: any) => {
+    try {
+      const { getCourseLessons } = await import('@/lib/api');
+      const ls = await getCourseLessons(course.id);
+      const payload = {
+        course: {
+          title: course.title,
+          description: course.description,
+          materials: course.materials || [],
+        },
+        lessons: (ls || []).map((l: any) => ({
+          title: l.title,
+          description: l.description,
+          video_url: l.video_url,
+          materials: l.materials || [],
+          order_index: l.order_index,
+        })),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${course.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const importCourseJson = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const courseData = parsed.course || {};
+      if (!courseData.title) throw new Error('Course JSON missing "course.title"');
+      const created = await adminRequest('insert', 'courses', {
+        title: courseData.title,
+        description: courseData.description || null,
+        materials: Array.isArray(courseData.materials) ? courseData.materials : [],
+        order_index: courses.length,
+      }, undefined, undefined, adminPwd);
+      const newCourseId = created?.[0]?.id;
+      const lessonsArr = Array.isArray(parsed.lessons) ? parsed.lessons : [];
+      for (let i = 0; i < lessonsArr.length; i++) {
+        const l = lessonsArr[i];
+        if (!l.title) continue;
+        await adminRequest('insert', 'workshop_lessons', {
+          course_id: newCourseId,
+          title: l.title,
+          description: l.description || null,
+          video_url: l.video_url || null,
+          materials: Array.isArray(l.materials) ? l.materials : [],
+          order_index: typeof l.order_index === 'number' ? l.order_index : i,
+        }, undefined, undefined, adminPwd);
+      }
+      load();
+      toast({ title: 'Course imported', description: `${lessonsArr.length} lesson(s) added` });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+
+
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h2 className="text-xl font-display font-bold text-foreground">Courses</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
-          <Plus className="w-4 h-4" /> Add Course
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <label className="inline-flex items-center gap-1 cursor-pointer bg-secondary text-secondary-foreground px-3 py-2 rounded text-sm hover:opacity-90">
+            <FileUp className="w-4 h-4" /> Import Course JSON
+            <input type="file" accept="application/json,.json" className="hidden" onChange={e => { if (e.target.files?.[0]) { importCourseJson(e.target.files[0]); e.target.value = ''; } }} />
+          </label>
+          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
+            <Plus className="w-4 h-4" /> Add Course
+          </Button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -1320,6 +1450,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                     </Button>
                     <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
+                    <Button variant="ghost" size="sm" onClick={() => exportCourseJson(c)} title="Export course as JSON"><Download className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
@@ -1338,15 +1469,19 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                       </div>
                       {Array.isArray(c.materials) && c.materials.length > 0 ? (
                         <div className="space-y-1">
-                          {c.materials.map((m: any, i: number) => (
-                            <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
-                              <FileText className="w-3 h-3 text-accent flex-shrink-0" />
-                              <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
-                              <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
-                              <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
-                              <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
-                            </div>
-                          ))}
+                          {c.materials.map((m: any, i: number) => {
+                            const MI = materialIconFor(m.type);
+                            return (
+                              <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
+                                <MI className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
+                                <button onClick={() => renameMaterial(c, i)} title="Rename"><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">No materials yet.</p>
@@ -1355,15 +1490,25 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
 
                     {/* Lessons */}
                     <div>
-                      <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                        <button onClick={() => importJsonLesson(c.id)} className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          <FileJson className="w-3 h-3" /> Import lesson JSON
+                        </button>
+                      </div>
                       <div className="space-y-3 mb-3">
                         {lessons.map((l, lidx) => (
                           <div key={l.id} className="bg-background border border-border rounded-md p-3">
                             <div className="flex items-start justify-between gap-2 mb-1">
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <div className="text-xs text-accent font-semibold">Lesson {lidx + 1}</div>
                                 <div className="text-sm font-medium text-foreground">{l.title}</div>
-                                {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
+                                {l.description && (
+                                  <div
+                                    className="text-xs text-muted-foreground mt-1 line-clamp-2 prose prose-xs max-w-none [&_*]:!text-muted-foreground [&_*]:!text-xs"
+                                    dangerouslySetInnerHTML={{ __html: l.description }}
+                                  />
+                                )}
                                 {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
                               </div>
                               <div className="flex gap-1 items-center">
@@ -1375,15 +1520,19 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                             </div>
                             {Array.isArray(l.materials) && l.materials.length > 0 && (
                               <div className="mt-2 space-y-1">
-                                {l.materials.map((m: any, i: number) => (
-                                  <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
-                                    <FileText className="w-3 h-3 text-accent flex-shrink-0" />
-                                    <span className="flex-1 truncate text-muted-foreground">{m.title}</span>
-                                    <button onClick={() => moveLessonMaterial(c.id, l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
-                                    <button onClick={() => moveLessonMaterial(c.id, l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
-                                    <button onClick={() => removeLessonMaterial(c.id, l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
-                                  </div>
-                                ))}
+                                {l.materials.map((m: any, i: number) => {
+                                  const MI = materialIconFor(m.type);
+                                  return (
+                                    <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
+                                      <MI className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                      <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-muted-foreground hover:underline">{m.title}</a>
+                                      <button onClick={() => renameLessonMaterial(c.id, l, i)} title="Rename"><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => moveLessonMaterial(c.id, l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => moveLessonMaterial(c.id, l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => removeLessonMaterial(c.id, l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
@@ -1396,7 +1545,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                       <div className="bg-background border border-border rounded-md p-3 space-y-2">
                         <div className="text-xs font-semibold text-foreground">{editLessonId ? 'Edit lesson' : 'New lesson'}</div>
                         <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
-                        <Textarea placeholder="Lesson notes / description" value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={3} className="text-sm" />
+                        <RichTextEditor value={lessonForm.description} onChange={(html) => setLessonForm(f => ({ ...f, description: html }))} placeholder="Lesson content — use the toolbar to add headings, lists, links, images…" />
                         <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveLesson(c.id)} className="bg-accent text-accent-foreground gap-1">
