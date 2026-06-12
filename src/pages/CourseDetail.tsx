@@ -149,7 +149,8 @@ const CourseDetail = () => {
         type: 'course_completion',
         verificationCode,
       });
-      toast({ title: 'Certificate downloaded!' });
+      setIssuedCode(verificationCode);
+      toast({ title: 'Certificate downloaded!', description: `Verification code: ${verificationCode}` });
     } catch (e: any) {
       toast({ title: 'Certificate failed', description: e.message, variant: 'destructive' });
     }
@@ -188,10 +189,10 @@ const CourseDetail = () => {
             </h2>
             <div className="grid gap-2">
               {courseMaterials.map((m: any, i: number) => {
-                const isImg = (m.type || '').startsWith('image');
+                const Icon = materialIcon(m.type);
                 return (
                   <a key={i} href={m.url} target="_blank" rel="noopener" download className="flex items-center gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-forest transition-shadow">
-                    {isImg ? <ImageIcon className="w-4 h-4 text-accent" /> : <FileText className="w-4 h-4 text-accent" />}
+                    <Icon className="w-4 h-4 text-accent" />
                     <span className="text-sm text-foreground truncate">{m.title}</span>
                     <Download className="w-4 h-4 ml-auto text-muted-foreground" />
                   </a>
@@ -221,44 +222,26 @@ const CourseDetail = () => {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {lessons.map((l, idx) => {
-                const videoId = l.video_url ? extractYoutubeId(l.video_url) : null;
-                const mats = Array.isArray(l.materials) ? l.materials : [];
                 const isComplete = completedLessonIds.has(l.id);
+                const matCount = Array.isArray(l.materials) ? l.materials.length : 0;
                 return (
-                  <div key={l.id} className={`bg-card border rounded-lg p-5 transition-colors ${isComplete ? 'border-accent/60' : 'border-border'}`}>
-                    <div className="flex items-start gap-3 mb-2">
-                      <button onClick={() => toggleLessonComplete(l.id, isComplete)} className="mt-0.5 hover:scale-110 transition-transform">
-                        {isComplete ? <CheckCircle2 className="w-5 h-5 text-accent" /> : <Circle className="w-5 h-5 text-muted-foreground" />}
-                      </button>
-                      <div className="flex-1 flex items-baseline gap-3">
+                  <div key={l.id} className={`bg-card border rounded-lg p-4 flex items-center gap-3 transition-colors ${isComplete ? 'border-accent/60' : 'border-border'}`}>
+                    <button onClick={() => toggleLessonComplete(l.id, isComplete)} className="hover:scale-110 transition-transform" title={isComplete ? 'Mark incomplete' : 'Mark complete'}>
+                      {isComplete ? <CheckCircle2 className="w-5 h-5 text-accent" /> : <Circle className="w-5 h-5 text-muted-foreground" />}
+                    </button>
+                    <Link to={`/course/${id}/lesson/${idx}`} className="flex-1 min-w-0 group">
+                      <div className="flex items-baseline gap-2">
                         <span className="text-xs font-bold text-accent">Lesson {idx + 1}</span>
-                        <h3 className={`font-display font-semibold text-foreground ${isComplete ? 'line-through opacity-70' : ''}`}>{l.title}</h3>
+                        {l.video_url && <PlayCircle className="w-3.5 h-3.5 text-muted-foreground" />}
+                        {matCount > 0 && <span className="text-[10px] text-muted-foreground">· {matCount} file{matCount > 1 ? 's' : ''}</span>}
                       </div>
-                    </div>
-                    {l.description && (
-                      <div className="text-sm text-foreground leading-relaxed mb-3 whitespace-pre-wrap">{l.description}</div>
-                    )}
-                    {videoId && (
-                      <div className="aspect-video rounded-md overflow-hidden mb-3">
-                        <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen title={l.title} />
-                      </div>
-                    )}
-                    {mats.length > 0 && (
-                      <div className="grid gap-2 mt-3">
-                        {mats.map((m: any, i: number) => {
-                          const isImg = (m.type || '').startsWith('image');
-                          return (
-                            <a key={i} href={m.url} target="_blank" rel="noopener" download className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2 text-sm hover:shadow-forest transition-shadow">
-                              {isImg ? <ImageIcon className="w-4 h-4 text-accent" /> : <FileText className="w-4 h-4 text-accent" />}
-                              <span className="text-foreground truncate">{m.title}</span>
-                              <Download className="w-3.5 h-3.5 ml-auto text-muted-foreground" />
-                            </a>
-                          );
-                        })}
-                      </div>
-                    )}
+                      <h3 className={`font-display font-semibold text-foreground group-hover:text-accent transition-colors ${isComplete ? 'line-through opacity-70' : ''}`}>{l.title}</h3>
+                    </Link>
+                    <Link to={`/course/${id}/lesson/${idx}`} className="text-xs px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-medium hover:opacity-90">
+                      Open
+                    </Link>
                   </div>
                 );
               })}
