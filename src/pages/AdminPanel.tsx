@@ -1396,11 +1396,17 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h2 className="text-xl font-display font-bold text-foreground">Courses</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
-          <Plus className="w-4 h-4" /> Add Course
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <label className="inline-flex items-center gap-1 cursor-pointer bg-secondary text-secondary-foreground px-3 py-2 rounded text-sm hover:opacity-90">
+            <FileUp className="w-4 h-4" /> Import Course JSON
+            <input type="file" accept="application/json,.json" className="hidden" onChange={e => { if (e.target.files?.[0]) { importCourseJson(e.target.files[0]); e.target.value = ''; } }} />
+          </label>
+          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
+            <Plus className="w-4 h-4" /> Add Course
+          </Button>
+        </div>
       </div>
 
       <AnimatePresence>
