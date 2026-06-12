@@ -1450,6 +1450,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                     </Button>
                     <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
+                    <Button variant="ghost" size="sm" onClick={() => exportCourseJson(c)} title="Export course as JSON"><Download className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
@@ -1468,15 +1469,19 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                       </div>
                       {Array.isArray(c.materials) && c.materials.length > 0 ? (
                         <div className="space-y-1">
-                          {c.materials.map((m: any, i: number) => (
-                            <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
-                              <FileText className="w-3 h-3 text-accent flex-shrink-0" />
-                              <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
-                              <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
-                              <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
-                              <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
-                            </div>
-                          ))}
+                          {c.materials.map((m: any, i: number) => {
+                            const MI = materialIconFor(m.type);
+                            return (
+                              <div key={i} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1">
+                                <MI className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-foreground hover:underline">{m.title}</a>
+                                <button onClick={() => renameMaterial(c, i)} title="Rename"><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => moveMaterial(c, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => moveMaterial(c, i, 1)} disabled={i === c.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                <button onClick={() => removeMaterial(c, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">No materials yet.</p>
