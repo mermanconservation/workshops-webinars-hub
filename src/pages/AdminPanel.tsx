@@ -15,6 +15,16 @@ import { format } from 'date-fns';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
+function materialIconFor(type: string = '') {
+  if (type.startsWith('image')) return ImageIcon;
+  if (type.includes('pdf')) return FileText;
+  if (type.includes('presentation') || type.includes('powerpoint') || type.includes('keynote')) return Presentation;
+  if (type.includes('word') || type.includes('document') || type.includes('text')) return FileText;
+  return FileIcon;
+}
+
+
+
 const AdminPanel = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
