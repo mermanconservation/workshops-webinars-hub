@@ -41,6 +41,7 @@ const CourseDetail = () => {
   const [emailModalValue, setEmailModalValue] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [certLoading, setCertLoading] = useState(false);
+  const [issuedCode, setIssuedCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
