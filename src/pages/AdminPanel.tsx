@@ -1290,6 +1290,108 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     loadLessons(courseId);
   };
 
+  const renameLessonMaterial = async (courseId: string, lesson: any, idx: number) => {
+    const existing = Array.isArray(lesson.materials) ? [...lesson.materials] : [];
+    const current = existing[idx];
+    if (!current) return;
+    const newTitle = window.prompt('Material title', current.title);
+    if (newTitle === null) return;
+    existing[idx] = { ...current, title: newTitle.trim() || current.title };
+    await adminRequest('update', 'workshop_lessons', { materials: existing }, lesson.id, undefined, adminPwd);
+    loadLessons(courseId);
+  };
+
+  const importJsonLesson = async (courseId: string) => {
+    const raw = window.prompt('Paste lesson JSON. Expected fields: title (required), description (HTML), video_url, materials [{title,url,type}]');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const lessonsArr = Array.isArray(parsed) ? parsed : [parsed];
+      const existingCount = (lessonsByCourse[courseId] || []).length;
+      for (let i = 0; i < lessonsArr.length; i++) {
+        const l = lessonsArr[i];
+        if (!l.title) throw new Error('Each lesson needs a "title"');
+        await adminRequest('insert', 'workshop_lessons', {
+          course_id: courseId,
+          title: String(l.title),
+          description: l.description || null,
+          video_url: l.video_url || null,
+          materials: Array.isArray(l.materials) ? l.materials : [],
+          order_index: existingCount + i,
+        }, undefined, undefined, adminPwd);
+      }
+      loadLessons(courseId);
+      toast({ title: `Imported ${lessonsArr.length} lesson(s)` });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const exportCourseJson = async (course: any) => {
+    try {
+      const { getCourseLessons } = await import('@/lib/api');
+      const ls = await getCourseLessons(course.id);
+      const payload = {
+        course: {
+          title: course.title,
+          description: course.description,
+          materials: course.materials || [],
+        },
+        lessons: (ls || []).map((l: any) => ({
+          title: l.title,
+          description: l.description,
+          video_url: l.video_url,
+          materials: l.materials || [],
+          order_index: l.order_index,
+        })),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${course.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const importCourseJson = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const courseData = parsed.course || {};
+      if (!courseData.title) throw new Error('Course JSON missing "course.title"');
+      const created = await adminRequest('insert', 'courses', {
+        title: courseData.title,
+        description: courseData.description || null,
+        materials: Array.isArray(courseData.materials) ? courseData.materials : [],
+        order_index: courses.length,
+      }, undefined, undefined, adminPwd);
+      const newCourseId = created?.[0]?.id;
+      const lessonsArr = Array.isArray(parsed.lessons) ? parsed.lessons : [];
+      for (let i = 0; i < lessonsArr.length; i++) {
+        const l = lessonsArr[i];
+        if (!l.title) continue;
+        await adminRequest('insert', 'workshop_lessons', {
+          course_id: newCourseId,
+          title: l.title,
+          description: l.description || null,
+          video_url: l.video_url || null,
+          materials: Array.isArray(l.materials) ? l.materials : [],
+          order_index: typeof l.order_index === 'number' ? l.order_index : i,
+        }, undefined, undefined, adminPwd);
+      }
+      load();
+      toast({ title: 'Course imported', description: `${lessonsArr.length} lesson(s) added` });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+
+
   if (loading) return <p className="text-muted-foreground">Loading...</p>;
 
   return (
