@@ -1490,15 +1490,25 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
 
                     {/* Lessons */}
                     <div>
-                      <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1"><BookOpen className="w-4 h-4 text-accent" /> Lessons</h4>
+                        <button onClick={() => importJsonLesson(c.id)} className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          <FileJson className="w-3 h-3" /> Import lesson JSON
+                        </button>
+                      </div>
                       <div className="space-y-3 mb-3">
                         {lessons.map((l, lidx) => (
                           <div key={l.id} className="bg-background border border-border rounded-md p-3">
                             <div className="flex items-start justify-between gap-2 mb-1">
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <div className="text-xs text-accent font-semibold">Lesson {lidx + 1}</div>
                                 <div className="text-sm font-medium text-foreground">{l.title}</div>
-                                {l.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.description}</div>}
+                                {l.description && (
+                                  <div
+                                    className="text-xs text-muted-foreground mt-1 line-clamp-2 prose prose-xs max-w-none [&_*]:!text-muted-foreground [&_*]:!text-xs"
+                                    dangerouslySetInnerHTML={{ __html: l.description }}
+                                  />
+                                )}
                                 {l.video_url && <div className="text-xs text-muted-foreground mt-1 truncate">🎬 {l.video_url}</div>}
                               </div>
                               <div className="flex gap-1 items-center">
@@ -1510,15 +1520,19 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                             </div>
                             {Array.isArray(l.materials) && l.materials.length > 0 && (
                               <div className="mt-2 space-y-1">
-                                {l.materials.map((m: any, i: number) => (
-                                  <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
-                                    <FileText className="w-3 h-3 text-accent flex-shrink-0" />
-                                    <span className="flex-1 truncate text-muted-foreground">{m.title}</span>
-                                    <button onClick={() => moveLessonMaterial(c.id, l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
-                                    <button onClick={() => moveLessonMaterial(c.id, l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
-                                    <button onClick={() => removeLessonMaterial(c.id, l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
-                                  </div>
-                                ))}
+                                {l.materials.map((m: any, i: number) => {
+                                  const MI = materialIconFor(m.type);
+                                  return (
+                                    <div key={i} className="flex items-center gap-2 text-xs bg-card border border-border rounded px-2 py-1">
+                                      <MI className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                      <a href={m.url} target="_blank" rel="noopener" className="flex-1 truncate text-muted-foreground hover:underline">{m.title}</a>
+                                      <button onClick={() => renameLessonMaterial(c.id, l, i)} title="Rename"><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => moveLessonMaterial(c.id, l, i, -1)} disabled={i === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => moveLessonMaterial(c.id, l, i, 1)} disabled={i === l.materials.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3 h-3 text-muted-foreground" /></button>
+                                      <button onClick={() => removeLessonMaterial(c.id, l, i)} title="Delete"><Trash2 className="w-3 h-3 text-destructive" /></button>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             <label className="inline-flex items-center gap-1.5 mt-2 cursor-pointer text-xs text-accent hover:underline">
@@ -1531,7 +1545,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                       <div className="bg-background border border-border rounded-md p-3 space-y-2">
                         <div className="text-xs font-semibold text-foreground">{editLessonId ? 'Edit lesson' : 'New lesson'}</div>
                         <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
-                        <Textarea placeholder="Lesson notes / description" value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={3} className="text-sm" />
+                        <RichTextEditor value={lessonForm.description} onChange={(html) => setLessonForm(f => ({ ...f, description: html }))} placeholder="Lesson content — use the toolbar to add headings, lists, links, images…" />
                         <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveLesson(c.id)} className="bg-accent text-accent-foreground gap-1">
