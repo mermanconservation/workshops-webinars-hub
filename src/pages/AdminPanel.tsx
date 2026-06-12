@@ -1187,6 +1187,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
+  const moveCourse = async (id: string, direction: -1 | 1) => {
     const idx = courses.findIndex(c => c.id === id);
     const swap = idx + direction;
     if (idx < 0 || swap < 0 || swap >= courses.length) return;
