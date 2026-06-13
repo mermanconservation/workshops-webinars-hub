@@ -203,10 +203,13 @@ const CourseDetail = () => {
               </h2>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4 mb-4 flex flex-wrap items-center gap-3">
-              <label className="text-xs text-muted-foreground">Your email:</label>
-              <Input placeholder="Your email" type="email" value={progressEmail} onChange={e => setProgressEmail(e.target.value)} className="flex-1 min-w-[200px] max-w-sm h-9" />
-              <Button size="sm" variant="outline" onClick={() => loadProgress(progressEmail)} disabled={!progressEmail.trim()}>Load progress</Button>
+            <div className="bg-card border border-border rounded-lg p-4 mb-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="text-xs text-muted-foreground">Your email:</label>
+                <Input placeholder="Your email" type="email" value={progressEmail} onChange={e => setProgressEmail(e.target.value)} className="flex-1 min-w-[200px] max-w-sm h-9" />
+                <Button size="sm" variant="outline" onClick={() => loadProgress(progressEmail)} disabled={!progressEmail.trim()}>Load progress</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Lesson completion is saved per email. Tick or untick the circle on any lesson to update progress.</p>
               <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-accent transition-all" style={{ width: `${lessons.length ? (completedLessonIds.size / lessons.length) * 100 : 0}%` }} />
               </div>
