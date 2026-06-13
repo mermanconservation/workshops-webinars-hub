@@ -4,10 +4,11 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { uploadFile } from '@/lib/api';
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Quote, Code,
-  Heading1, Heading2, Heading3, Link as LinkIcon, Image as ImageIcon, Undo, Redo, Minus,
+  Heading1, Heading2, Heading3, Link as LinkIcon, Image as ImageIcon, ImagePlus, Undo, Redo, Minus, Loader2,
 } from 'lucide-react';
 
 interface Props {
