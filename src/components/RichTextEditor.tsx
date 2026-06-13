@@ -142,7 +142,9 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
         {btn(editor.isActive('codeBlock'), () => editor.chain().focus().toggleCodeBlock().run(), 'Code block', Code)}
         <span className="w-px bg-border mx-1" />
         {btn(editor.isActive('link'), addLink, 'Link', LinkIcon)}
-        {btn(false, addImage, 'Image', ImageIcon)}
+        {btn(false, addImageByUrl, 'Image by URL', ImageIcon)}
+        {btn(false, onPickFile, uploading ? 'Uploading…' : 'Upload image', uploading ? Loader2 : ImagePlus)}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { handleUpload(f); e.target.value = ''; } }} />
         {btn(false, () => editor.chain().focus().setHorizontalRule().run(), 'Divider', Minus)}
         <span className="w-px bg-border mx-1" />
         {btn(false, () => editor.chain().focus().undo().run(), 'Undo', Undo)}
