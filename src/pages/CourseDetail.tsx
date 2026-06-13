@@ -188,18 +188,7 @@ const CourseDetail = () => {
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-accent" /> Course Materials
             </h2>
-            <div className="grid gap-2">
-              {courseMaterials.map((m: any, i: number) => {
-                const Icon = materialIcon(m.type);
-                return (
-                  <a key={i} href={m.url} target="_blank" rel="noopener" download className="flex items-center gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-forest transition-shadow">
-                    <Icon className="w-4 h-4 text-accent" />
-                    <span className="text-sm text-foreground truncate">{m.title}</span>
-                    <Download className="w-4 h-4 ml-auto text-muted-foreground" />
-                  </a>
-                );
-              })}
-            </div>
+            <MaterialPreviewGrid materials={courseMaterials} />
           </section>
         )}
 
