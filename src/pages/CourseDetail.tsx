@@ -240,7 +240,21 @@ const CourseDetail = () => {
               })}
             </div>
 
-            {allLessonsComplete && (
+            {allLessonsComplete && finalQuiz && (
+              <div className="mt-6 bg-card border border-border rounded-lg p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-accent" />
+                  <h3 className="font-display font-bold text-foreground">Final exam — required for your certificate</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You must pass with at least {finalQuiz.pass_score}% to unlock your Certificate of Course Completion.
+                  A failed attempt locks retake for 24 hours.
+                </p>
+                <QuizRunner quiz={finalQuiz} email={progressEmail} enforceCooldown onPassed={setFinalPassed} />
+              </div>
+            )}
+
+            {allLessonsComplete && (!finalQuiz || finalPassed) && (
               <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">
                 <div className="flex items-center gap-3">
                   <Award className="w-8 h-8" />
