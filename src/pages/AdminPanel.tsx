@@ -1087,6 +1087,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const { toast } = useToast();
   const [courses, setCourses] = useState<any[]>([]);
   const [lessonsByCourse, setLessonsByCourse] = useState<Record<string, any[]>>({});
+  const [quizzesByCourse, setQuizzesByCourse] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1094,6 +1095,50 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
+  const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
+
+  const loadQuizzes = async (courseId: string) => {
+    try {
+      const list = await getCourseQuizzes(courseId);
+      setQuizzesByCourse(prev => ({ ...prev, [courseId]: list || [] }));
+    } catch (e: any) {
+      console.warn('Quiz load failed', e);
+    }
+  };
+
+  const saveQuiz = async (courseId: string, payload: { title: string; kind: 'lesson' | 'final'; lesson_id: string | null; pass_score: number; questions: Question[] }) => {
+    try {
+      const data = {
+        course_id: courseId,
+        lesson_id: payload.lesson_id,
+        kind: payload.kind,
+        title: payload.title,
+        pass_score: payload.pass_score,
+        questions: payload.questions,
+      };
+      const existingId = quizEditorOpen?.quiz?.id;
+      if (existingId) {
+        await adminRequest('update', 'course_quizzes', data, existingId, undefined, adminPwd);
+      } else {
+        await adminRequest('insert', 'course_quizzes', data, undefined, undefined, adminPwd);
+      }
+      setQuizEditorOpen(null);
+      loadQuizzes(courseId);
+      toast({ title: existingId ? 'Quiz updated' : 'Quiz created' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteQuiz = async (courseId: string, id: string) => {
+    if (!confirm('Delete this quiz? Attempts will also be removed.')) return;
+    try {
+      await adminRequest('delete', 'course_quizzes', undefined, id, undefined, adminPwd);
+      loadQuizzes(courseId);
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
+    }
+  };
 
   const loadLessons = async (courseId: string) => {
     try {
