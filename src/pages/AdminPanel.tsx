@@ -1305,21 +1305,30 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const importJsonLesson = async (courseId: string) => {
-    const raw = window.prompt('Paste lesson JSON. Expected fields: title (required), description (HTML), video_url, materials [{title,url,type}]');
+    const raw = window.prompt(
+      'Paste lesson JSON.\n\nExpected: an object or array of objects with:\n• title (required)\n• description (HTML, optional)\n• video_url (optional)\n• materials: [{ title, url, type? }] (optional)'
+    );
     if (!raw) return;
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); }
+    catch (e: any) { toast({ title: 'Invalid JSON', description: e.message, variant: 'destructive' }); return; }
+    const check = LessonImportArraySchema.safeParse(parsed);
+    if (!check.success) {
+      toast({ title: 'Lesson JSON rejected', description: formatZodErrors(check.error), variant: 'destructive' });
+      return;
+    }
+    const lessonsArr = Array.isArray(check.data) ? check.data : [check.data];
+    if (!confirm(`Import ${lessonsArr.length} lesson(s) into this course?`)) return;
     try {
-      const parsed = JSON.parse(raw);
-      const lessonsArr = Array.isArray(parsed) ? parsed : [parsed];
       const existingCount = (lessonsByCourse[courseId] || []).length;
       for (let i = 0; i < lessonsArr.length; i++) {
         const l = lessonsArr[i];
-        if (!l.title) throw new Error('Each lesson needs a "title"');
         await adminRequest('insert', 'workshop_lessons', {
           course_id: courseId,
-          title: String(l.title),
+          title: l.title,
           description: l.description || null,
           video_url: l.video_url || null,
-          materials: Array.isArray(l.materials) ? l.materials : [],
+          materials: l.materials || [],
           order_index: existingCount + i,
         }, undefined, undefined, adminPwd);
       }
@@ -1335,6 +1344,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
       const { getCourseLessons } = await import('@/lib/api');
       const ls = await getCourseLessons(course.id);
       const payload = {
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         course: {
           title: course.title,
           description: course.description,
@@ -1361,33 +1371,46 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const importCourseJson = async (file: File) => {
+    let raw: unknown;
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text);
-      const courseData = parsed.course || {};
-      if (!courseData.title) throw new Error('Course JSON missing "course.title"');
+      raw = JSON.parse(text);
+    } catch (e: any) {
+      toast({ title: 'Invalid JSON file', description: e.message, variant: 'destructive' });
+      return;
+    }
+    const check = CourseExportSchema.safeParse(raw);
+    if (!check.success) {
+      toast({
+        title: 'Course JSON rejected',
+        description: formatZodErrors(check.error) + '\n\nMake sure the file includes "schemaVersion": "1.0" and a valid course/lessons structure (re-export from this admin panel if unsure).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const data = check.data;
+    if (!confirm(`Import course "${data.course.title}" with ${data.lessons.length} lesson(s) and ${data.course.materials?.length || 0} material(s)? A new course will be created (no existing data overwritten).`)) return;
+    try {
       const created = await adminRequest('insert', 'courses', {
-        title: courseData.title,
-        description: courseData.description || null,
-        materials: Array.isArray(courseData.materials) ? courseData.materials : [],
+        title: data.course.title,
+        description: data.course.description || null,
+        materials: data.course.materials || [],
         order_index: courses.length,
       }, undefined, undefined, adminPwd);
       const newCourseId = created?.[0]?.id;
-      const lessonsArr = Array.isArray(parsed.lessons) ? parsed.lessons : [];
-      for (let i = 0; i < lessonsArr.length; i++) {
-        const l = lessonsArr[i];
-        if (!l.title) continue;
+      for (let i = 0; i < data.lessons.length; i++) {
+        const l = data.lessons[i];
         await adminRequest('insert', 'workshop_lessons', {
           course_id: newCourseId,
           title: l.title,
           description: l.description || null,
           video_url: l.video_url || null,
-          materials: Array.isArray(l.materials) ? l.materials : [],
+          materials: l.materials || [],
           order_index: typeof l.order_index === 'number' ? l.order_index : i,
         }, undefined, undefined, adminPwd);
       }
       load();
-      toast({ title: 'Course imported', description: `${lessonsArr.length} lesson(s) added` });
+      toast({ title: 'Course imported', description: `${data.lessons.length} lesson(s) added` });
     } catch (e: any) {
       toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
     }
