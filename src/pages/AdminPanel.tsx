@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList } from 'lucide-react';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { QuizEditor } from '@/components/QuizEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +13,8 @@ import { generateCertificatePDF } from '@/lib/certificate';
 import { CertificatePreview } from '@/components/CertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
+import { z } from 'zod';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
