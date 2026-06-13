@@ -36,14 +36,21 @@ const CourseDetail = () => {
   const [participantName, setParticipantName] = useState('');
   const [certLoading, setCertLoading] = useState(false);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
+  const [finalQuiz, setFinalQuiz] = useState<any>(null);
+  const [finalPassed, setFinalPassed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([getCourse(id), getCourseLessons(id), getCompanySettings()])
-      .then(([c, l, cs]) => {
+    Promise.all([getCourse(id), getCourseLessons(id), getCompanySettings(), getCourseQuizzes(id)])
+      .then(([c, l, cs, quizzes]) => {
         setCourse(c);
         setLessons(l || []);
         setCompany(cs);
+        const fq = (quizzes || []).find((q: any) => q.kind === 'final');
+        if (fq) {
+          const parsed = z.array(QuestionSchema).safeParse(fq.questions);
+          if (parsed.success) setFinalQuiz({ ...fq, questions: parsed.data });
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
