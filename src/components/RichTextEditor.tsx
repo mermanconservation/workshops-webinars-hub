@@ -61,9 +61,34 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     if (url === '') { editor.chain().focus().unsetLink().run(); return; }
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
-  const addImage = () => {
+  const addImageByUrl = () => {
     const url = window.prompt('Image URL');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+    if (!url) return;
+    const caption = window.prompt('Caption (optional)') || '';
+    insertImage(url, caption);
+  };
+
+  const insertImage = (url: string, caption: string) => {
+    editor.chain().focus().setImage({ src: url, alt: caption || undefined }).run();
+    if (caption.trim()) {
+      editor.chain().focus().insertContent(`<p style="text-align:center"><em>${escapeHtml(caption)}</em></p>`).run();
+    }
+  };
+
+  const onPickFile = () => fileInputRef.current?.click();
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const resized = await resizeImage(file, 1600);
+      const url = await uploadFile(resized, 'lesson-images');
+      const caption = window.prompt('Caption (optional)') || '';
+      insertImage(url, caption);
+    } catch (e: any) {
+      alert('Upload failed: ' + (e.message || e));
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
