@@ -72,6 +72,17 @@ const CourseLesson = () => {
   const videoId = useMemo(() => lesson?.video_url ? extractYoutubeId(lesson.video_url) : null, [lesson?.video_url]);
   const materials = Array.isArray(lesson?.materials) ? lesson.materials : [];
 
+  // Lesson-level knowledge check
+  useEffect(() => {
+    if (!courseId || !lesson) { setLessonQuiz(null); return; }
+    getCourseQuizzes(courseId).then((all) => {
+      const q = (all || []).find((x: any) => x.kind === 'lesson' && x.lesson_id === lesson.id);
+      if (!q) { setLessonQuiz(null); return; }
+      const parsed = z.array(QuestionSchema).safeParse(q.questions);
+      setLessonQuiz(parsed.success ? { ...q, questions: parsed.data } : null);
+    }).catch(() => setLessonQuiz(null));
+  }, [courseId, lesson?.id]); // eslint-disable-line
+
   const submitEmail = async () => {
     const v = emailValue.trim();
     if (!v) return;
