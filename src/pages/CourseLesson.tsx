@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ChevronLeft, CheckCircle2, Circle, Download, FileText, Image as ImageIcon, File, Presentation, Award } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, CheckCircle2, Circle, Download, FileText, Image as ImageIcon, File, Presentation, Award, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -9,6 +9,9 @@ import {
   getCourse, getCourseLessons, getCourseLessonCompletions,
   markCourseLessonComplete, unmarkLessonComplete,
 } from '@/lib/api';
+import { getCourseQuizzes, QuestionSchema } from '@/lib/quiz';
+import { QuizRunner } from '@/components/QuizRunner';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 
 function materialIcon(type: string = '') {
