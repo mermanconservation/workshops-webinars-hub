@@ -17,7 +17,41 @@ interface Props {
   placeholder?: string;
 }
 
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+async function resizeImage(file: File, maxEdge: number): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+  const dataUrl: string = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((res, rej) => {
+    const i = new window.Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  const longest = Math.max(img.width, img.height);
+  if (longest <= maxEdge) return file;
+  const scale = maxEdge / longest;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const isPng = file.type === 'image/png';
+  const blob: Blob = await new Promise(res => canvas.toBlob(b => res(b!), isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : 0.85)!);
+  const newName = file.name.replace(/\.(jpe?g|png|webp)$/i, isPng ? '.png' : '.jpg');
+  return new File([blob], newName, { type: isPng ? 'image/png' : 'image/jpeg' });
+}
+
 export function RichTextEditor({ value, onChange, placeholder }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit,
