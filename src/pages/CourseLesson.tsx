@@ -40,6 +40,7 @@ const CourseLesson = () => {
   const [email, setEmail] = useState(() => localStorage.getItem('lesson_progress_email') || '');
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailValue, setEmailValue] = useState('');
+  const [lessonQuiz, setLessonQuiz] = useState<any>(null);
 
   useEffect(() => {
     if (!courseId) return;
