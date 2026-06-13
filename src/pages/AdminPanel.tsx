@@ -1253,7 +1253,9 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     } else {
       setExpandedCourse(courseId);
       loadLessons(courseId);
+      loadQuizzes(courseId);
       setEditLessonId(null);
+      setQuizEditorOpen(null);
       setLessonForm({ title: '', description: '', video_url: '' });
     }
   };
