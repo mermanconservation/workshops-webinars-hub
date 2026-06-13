@@ -191,6 +191,15 @@ const CourseLesson = () => {
           </section>
         )}
 
+        {lessonQuiz && (
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <ClipboardList className="w-4 h-4 text-accent" /> Knowledge check
+            </h2>
+            <QuizRunner quiz={lessonQuiz} email={email} />
+          </section>
+        )}
+
         <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
           <button onClick={toggleComplete} className="inline-flex items-center gap-2 text-sm">
             {isComplete
