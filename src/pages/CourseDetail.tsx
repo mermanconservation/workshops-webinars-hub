@@ -1,18 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, FileText, Image as ImageIcon, BookOpen, CheckCircle2, Circle, Award, File, Presentation, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Download, FileText, BookOpen, CheckCircle2, Circle, Award, PlayCircle, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-
-function materialIcon(type: string = '') {
-  if (type.startsWith('image')) return ImageIcon;
-  if (type.includes('pdf')) return FileText;
-  if (type.includes('presentation') || type.includes('powerpoint') || type.includes('keynote')) return Presentation;
-  if (type.includes('word') || type.includes('document') || type.includes('text')) return FileText;
-  return File;
-}
-
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
@@ -25,6 +15,10 @@ import {
   generateCertificateText,
   saveCertificateVerification,
 } from '@/lib/api';
+import { getCourseQuizzes, QuestionSchema } from '@/lib/quiz';
+import { z } from 'zod';
+import { MaterialPreviewGrid } from '@/components/MaterialPreview';
+import { QuizRunner } from '@/components/QuizRunner';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,14 +36,21 @@ const CourseDetail = () => {
   const [participantName, setParticipantName] = useState('');
   const [certLoading, setCertLoading] = useState(false);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
+  const [finalQuiz, setFinalQuiz] = useState<any>(null);
+  const [finalPassed, setFinalPassed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([getCourse(id), getCourseLessons(id), getCompanySettings()])
-      .then(([c, l, cs]) => {
+    Promise.all([getCourse(id), getCourseLessons(id), getCompanySettings(), getCourseQuizzes(id)])
+      .then(([c, l, cs, quizzes]) => {
         setCourse(c);
         setLessons(l || []);
         setCompany(cs);
+        const fq = (quizzes || []).find((q: any) => q.kind === 'final');
+        if (fq) {
+          const parsed = z.array(QuestionSchema).safeParse(fq.questions);
+          if (parsed.success) setFinalQuiz({ ...fq, questions: parsed.data });
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -187,18 +188,7 @@ const CourseDetail = () => {
             <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-accent" /> Course Materials
             </h2>
-            <div className="grid gap-2">
-              {courseMaterials.map((m: any, i: number) => {
-                const Icon = materialIcon(m.type);
-                return (
-                  <a key={i} href={m.url} target="_blank" rel="noopener" download className="flex items-center gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-forest transition-shadow">
-                    <Icon className="w-4 h-4 text-accent" />
-                    <span className="text-sm text-foreground truncate">{m.title}</span>
-                    <Download className="w-4 h-4 ml-auto text-muted-foreground" />
-                  </a>
-                );
-              })}
-            </div>
+            <MaterialPreviewGrid materials={courseMaterials} />
           </section>
         )}
 
@@ -213,10 +203,13 @@ const CourseDetail = () => {
               </h2>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4 mb-4 flex flex-wrap items-center gap-3">
-              <label className="text-xs text-muted-foreground">Your email:</label>
-              <Input placeholder="Your email" type="email" value={progressEmail} onChange={e => setProgressEmail(e.target.value)} className="flex-1 min-w-[200px] max-w-sm h-9" />
-              <Button size="sm" variant="outline" onClick={() => loadProgress(progressEmail)} disabled={!progressEmail.trim()}>Load progress</Button>
+            <div className="bg-card border border-border rounded-lg p-4 mb-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="text-xs text-muted-foreground">Your email:</label>
+                <Input placeholder="Your email" type="email" value={progressEmail} onChange={e => setProgressEmail(e.target.value)} className="flex-1 min-w-[200px] max-w-sm h-9" />
+                <Button size="sm" variant="outline" onClick={() => loadProgress(progressEmail)} disabled={!progressEmail.trim()}>Load progress</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Lesson completion is saved per email. Tick or untick the circle on any lesson to update progress.</p>
               <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-accent transition-all" style={{ width: `${lessons.length ? (completedLessonIds.size / lessons.length) * 100 : 0}%` }} />
               </div>
@@ -247,7 +240,21 @@ const CourseDetail = () => {
               })}
             </div>
 
-            {allLessonsComplete && (
+            {allLessonsComplete && finalQuiz && (
+              <div className="mt-6 bg-card border border-border rounded-lg p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-accent" />
+                  <h3 className="font-display font-bold text-foreground">Final exam — required for your certificate</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You must pass with at least {finalQuiz.pass_score}% to unlock your Certificate of Course Completion.
+                  A failed attempt locks retake for 24 hours.
+                </p>
+                <QuizRunner quiz={finalQuiz} email={progressEmail} enforceCooldown onPassed={setFinalPassed} />
+              </div>
+            )}
+
+            {allLessonsComplete && (!finalQuiz || finalPassed) && (
               <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">
                 <div className="flex items-center gap-3">
                   <Award className="w-8 h-8" />

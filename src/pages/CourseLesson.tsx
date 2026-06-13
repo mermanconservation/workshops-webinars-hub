@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ChevronLeft, CheckCircle2, Circle, Download, FileText, Image as ImageIcon, File, Presentation, Award } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, CheckCircle2, Circle, Download, FileText, Image as ImageIcon, File, Presentation, Award, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -9,6 +9,9 @@ import {
   getCourse, getCourseLessons, getCourseLessonCompletions,
   markCourseLessonComplete, unmarkLessonComplete,
 } from '@/lib/api';
+import { getCourseQuizzes, QuestionSchema } from '@/lib/quiz';
+import { QuizRunner } from '@/components/QuizRunner';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 
 function materialIcon(type: string = '') {
@@ -37,6 +40,7 @@ const CourseLesson = () => {
   const [email, setEmail] = useState(() => localStorage.getItem('lesson_progress_email') || '');
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailValue, setEmailValue] = useState('');
+  const [lessonQuiz, setLessonQuiz] = useState<any>(null);
 
   useEffect(() => {
     if (!courseId) return;
@@ -67,6 +71,17 @@ const CourseLesson = () => {
   const isLast = idx >= lessons.length - 1;
   const videoId = useMemo(() => lesson?.video_url ? extractYoutubeId(lesson.video_url) : null, [lesson?.video_url]);
   const materials = Array.isArray(lesson?.materials) ? lesson.materials : [];
+
+  // Lesson-level knowledge check
+  useEffect(() => {
+    if (!courseId || !lesson) { setLessonQuiz(null); return; }
+    getCourseQuizzes(courseId).then((all) => {
+      const q = (all || []).find((x: any) => x.kind === 'lesson' && x.lesson_id === lesson.id);
+      if (!q) { setLessonQuiz(null); return; }
+      const parsed = z.array(QuestionSchema).safeParse(q.questions);
+      setLessonQuiz(parsed.success ? { ...q, questions: parsed.data } : null);
+    }).catch(() => setLessonQuiz(null));
+  }, [courseId, lesson?.id]); // eslint-disable-line
 
   const submitEmail = async () => {
     const v = emailValue.trim();
@@ -173,6 +188,15 @@ const CourseLesson = () => {
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {lessonQuiz && (
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <ClipboardList className="w-4 h-4 text-accent" /> Knowledge check
+            </h2>
+            <QuizRunner quiz={lessonQuiz} email={email} />
           </section>
         )}
 

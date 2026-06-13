@@ -91,6 +91,57 @@ export type Database = {
         }
         Relationships: []
       }
+      course_quizzes: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          kind: string
+          lesson_id: string | null
+          pass_score: number
+          questions: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          lesson_id?: string | null
+          pass_score?: number
+          questions?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          lesson_id?: string | null
+          pass_score?: number
+          questions?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_quizzes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           cover_image_url: string | null
@@ -205,6 +256,47 @@ export type Database = {
           title?: string | null
         }
         Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          created_at: string
+          email: string
+          id: string
+          max_score: number
+          passed: boolean
+          quiz_id: string
+          score: number
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          email: string
+          id?: string
+          max_score: number
+          passed?: boolean
+          quiz_id: string
+          score: number
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          email?: string
+          id?: string
+          max_score?: number
+          passed?: boolean
+          quiz_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "course_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workshop_lessons: {
         Row: {

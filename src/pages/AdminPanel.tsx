@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList } from 'lucide-react';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { QuizEditor } from '@/components/QuizEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +13,8 @@ import { generateCertificatePDF } from '@/lib/certificate';
 import { CertificatePreview } from '@/components/CertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
+import { z } from 'zod';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
@@ -1084,6 +1087,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const { toast } = useToast();
   const [courses, setCourses] = useState<any[]>([]);
   const [lessonsByCourse, setLessonsByCourse] = useState<Record<string, any[]>>({});
+  const [quizzesByCourse, setQuizzesByCourse] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1091,6 +1095,50 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
+  const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
+
+  const loadQuizzes = async (courseId: string) => {
+    try {
+      const list = await getCourseQuizzes(courseId);
+      setQuizzesByCourse(prev => ({ ...prev, [courseId]: list || [] }));
+    } catch (e: any) {
+      console.warn('Quiz load failed', e);
+    }
+  };
+
+  const saveQuiz = async (courseId: string, payload: { title: string; kind: 'lesson' | 'final'; lesson_id: string | null; pass_score: number; questions: Question[] }) => {
+    try {
+      const data = {
+        course_id: courseId,
+        lesson_id: payload.lesson_id,
+        kind: payload.kind,
+        title: payload.title,
+        pass_score: payload.pass_score,
+        questions: payload.questions,
+      };
+      const existingId = quizEditorOpen?.quiz?.id;
+      if (existingId) {
+        await adminRequest('update', 'course_quizzes', data, existingId, undefined, adminPwd);
+      } else {
+        await adminRequest('insert', 'course_quizzes', data, undefined, undefined, adminPwd);
+      }
+      setQuizEditorOpen(null);
+      loadQuizzes(courseId);
+      toast({ title: existingId ? 'Quiz updated' : 'Quiz created' });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteQuiz = async (courseId: string, id: string) => {
+    if (!confirm('Delete this quiz? Attempts will also be removed.')) return;
+    try {
+      await adminRequest('delete', 'course_quizzes', undefined, id, undefined, adminPwd);
+      loadQuizzes(courseId);
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
+    }
+  };
 
   const loadLessons = async (courseId: string) => {
     try {
@@ -1205,7 +1253,9 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     } else {
       setExpandedCourse(courseId);
       loadLessons(courseId);
+      loadQuizzes(courseId);
       setEditLessonId(null);
+      setQuizEditorOpen(null);
       setLessonForm({ title: '', description: '', video_url: '' });
     }
   };
@@ -1302,21 +1352,30 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const importJsonLesson = async (courseId: string) => {
-    const raw = window.prompt('Paste lesson JSON. Expected fields: title (required), description (HTML), video_url, materials [{title,url,type}]');
+    const raw = window.prompt(
+      'Paste lesson JSON.\n\nExpected: an object or array of objects with:\n• title (required)\n• description (HTML, optional)\n• video_url (optional)\n• materials: [{ title, url, type? }] (optional)'
+    );
     if (!raw) return;
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); }
+    catch (e: any) { toast({ title: 'Invalid JSON', description: e.message, variant: 'destructive' }); return; }
+    const check = LessonImportArraySchema.safeParse(parsed);
+    if (!check.success) {
+      toast({ title: 'Lesson JSON rejected', description: formatZodErrors(check.error), variant: 'destructive' });
+      return;
+    }
+    const lessonsArr = Array.isArray(check.data) ? check.data : [check.data];
+    if (!confirm(`Import ${lessonsArr.length} lesson(s) into this course?`)) return;
     try {
-      const parsed = JSON.parse(raw);
-      const lessonsArr = Array.isArray(parsed) ? parsed : [parsed];
       const existingCount = (lessonsByCourse[courseId] || []).length;
       for (let i = 0; i < lessonsArr.length; i++) {
         const l = lessonsArr[i];
-        if (!l.title) throw new Error('Each lesson needs a "title"');
         await adminRequest('insert', 'workshop_lessons', {
           course_id: courseId,
-          title: String(l.title),
+          title: l.title,
           description: l.description || null,
           video_url: l.video_url || null,
-          materials: Array.isArray(l.materials) ? l.materials : [],
+          materials: l.materials || [],
           order_index: existingCount + i,
         }, undefined, undefined, adminPwd);
       }
@@ -1332,6 +1391,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
       const { getCourseLessons } = await import('@/lib/api');
       const ls = await getCourseLessons(course.id);
       const payload = {
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         course: {
           title: course.title,
           description: course.description,
@@ -1358,33 +1418,46 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   };
 
   const importCourseJson = async (file: File) => {
+    let raw: unknown;
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text);
-      const courseData = parsed.course || {};
-      if (!courseData.title) throw new Error('Course JSON missing "course.title"');
+      raw = JSON.parse(text);
+    } catch (e: any) {
+      toast({ title: 'Invalid JSON file', description: e.message, variant: 'destructive' });
+      return;
+    }
+    const check = CourseExportSchema.safeParse(raw);
+    if (!check.success) {
+      toast({
+        title: 'Course JSON rejected',
+        description: formatZodErrors(check.error) + '\n\nMake sure the file includes "schemaVersion": "1.0" and a valid course/lessons structure (re-export from this admin panel if unsure).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const data = check.data;
+    if (!confirm(`Import course "${data.course.title}" with ${data.lessons.length} lesson(s) and ${data.course.materials?.length || 0} material(s)? A new course will be created (no existing data overwritten).`)) return;
+    try {
       const created = await adminRequest('insert', 'courses', {
-        title: courseData.title,
-        description: courseData.description || null,
-        materials: Array.isArray(courseData.materials) ? courseData.materials : [],
+        title: data.course.title,
+        description: data.course.description || null,
+        materials: data.course.materials || [],
         order_index: courses.length,
       }, undefined, undefined, adminPwd);
       const newCourseId = created?.[0]?.id;
-      const lessonsArr = Array.isArray(parsed.lessons) ? parsed.lessons : [];
-      for (let i = 0; i < lessonsArr.length; i++) {
-        const l = lessonsArr[i];
-        if (!l.title) continue;
+      for (let i = 0; i < data.lessons.length; i++) {
+        const l = data.lessons[i];
         await adminRequest('insert', 'workshop_lessons', {
           course_id: newCourseId,
           title: l.title,
           description: l.description || null,
           video_url: l.video_url || null,
-          materials: Array.isArray(l.materials) ? l.materials : [],
+          materials: l.materials || [],
           order_index: typeof l.order_index === 'number' ? l.order_index : i,
         }, undefined, undefined, adminPwd);
       }
       load();
-      toast({ title: 'Course imported', description: `${lessonsArr.length} lesson(s) added` });
+      toast({ title: 'Course imported', description: `${data.lessons.length} lesson(s) added` });
     } catch (e: any) {
       toast({ title: 'Import failed', description: e.message, variant: 'destructive' });
     }
@@ -1556,6 +1629,58 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                           )}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Quizzes & Final Exam */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1">
+                          <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
+                        </h4>
+                        {!quizEditorOpen && (
+                          <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                            <Plus className="w-3 h-3" /> Add quiz
+                          </button>
+                        )}
+                      </div>
+
+                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && (
+                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, or a final exam that gates the certificate.</p>
+                      )}
+
+                      <div className="space-y-1.5 mb-3">
+                        {(quizzesByCourse[c.id] || []).map((q: any) => {
+                          const lessonTitle = q.lesson_id ? (lessons.find(l => l.id === q.lesson_id)?.title || 'Unknown lesson') : null;
+                          const qCount = Array.isArray(q.questions) ? q.questions.length : 0;
+                          return (
+                            <div key={q.id} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1.5">
+                              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${q.kind === 'final' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                {q.kind === 'final' ? 'Final exam' : 'Lesson'}
+                              </span>
+                              <span className="text-foreground font-medium truncate">{q.title}</span>
+                              {lessonTitle && <span className="text-muted-foreground truncate">· {lessonTitle}</span>}
+                              <span className="text-muted-foreground ml-auto">{qCount} q · pass {q.pass_score}%</span>
+                              <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: q })}><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                              <button onClick={() => deleteQuiz(c.id, q.id)}><Trash2 className="w-3 h-3 text-destructive" /></button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {quizEditorOpen?.courseId === c.id && (
+                        <QuizEditor
+                          initial={quizEditorOpen.quiz ? {
+                            title: quizEditorOpen.quiz.title,
+                            kind: quizEditorOpen.quiz.kind,
+                            lesson_id: quizEditorOpen.quiz.lesson_id,
+                            pass_score: quizEditorOpen.quiz.pass_score,
+                            questions: z.array(QuestionSchema).safeParse(quizEditorOpen.quiz.questions).data || [],
+                          } : undefined}
+                          lessons={(lessonsByCourse[c.id] || []).map(l => ({ id: l.id, title: l.title }))}
+                          onSave={(payload) => saveQuiz(c.id, payload)}
+                          onCancel={() => setQuizEditorOpen(null)}
+                        />
+                      )}
                     </div>
                   </motion.div>
                 )}
