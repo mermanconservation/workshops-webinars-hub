@@ -1630,6 +1630,58 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                         </div>
                       </div>
                     </div>
+
+                    {/* Quizzes & Final Exam */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1">
+                          <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
+                        </h4>
+                        {!quizEditorOpen && (
+                          <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                            <Plus className="w-3 h-3" /> Add quiz
+                          </button>
+                        )}
+                      </div>
+
+                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && (
+                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, or a final exam that gates the certificate.</p>
+                      )}
+
+                      <div className="space-y-1.5 mb-3">
+                        {(quizzesByCourse[c.id] || []).map((q: any) => {
+                          const lessonTitle = q.lesson_id ? (lessons.find(l => l.id === q.lesson_id)?.title || 'Unknown lesson') : null;
+                          const qCount = Array.isArray(q.questions) ? q.questions.length : 0;
+                          return (
+                            <div key={q.id} className="flex items-center gap-2 text-xs bg-background border border-border rounded px-2 py-1.5">
+                              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${q.kind === 'final' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                {q.kind === 'final' ? 'Final exam' : 'Lesson'}
+                              </span>
+                              <span className="text-foreground font-medium truncate">{q.title}</span>
+                              {lessonTitle && <span className="text-muted-foreground truncate">· {lessonTitle}</span>}
+                              <span className="text-muted-foreground ml-auto">{qCount} q · pass {q.pass_score}%</span>
+                              <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: q })}><Edit2 className="w-3 h-3 text-muted-foreground" /></button>
+                              <button onClick={() => deleteQuiz(c.id, q.id)}><Trash2 className="w-3 h-3 text-destructive" /></button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {quizEditorOpen?.courseId === c.id && (
+                        <QuizEditor
+                          initial={quizEditorOpen.quiz ? {
+                            title: quizEditorOpen.quiz.title,
+                            kind: quizEditorOpen.quiz.kind,
+                            lesson_id: quizEditorOpen.quiz.lesson_id,
+                            pass_score: quizEditorOpen.quiz.pass_score,
+                            questions: z.array(QuestionSchema).safeParse(quizEditorOpen.quiz.questions).data || [],
+                          } : undefined}
+                          lessons={(lessonsByCourse[c.id] || []).map(l => ({ id: l.id, title: l.title }))}
+                          onSave={(payload) => saveQuiz(c.id, payload)}
+                          onCancel={() => setQuizEditorOpen(null)}
+                        />
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </div>
