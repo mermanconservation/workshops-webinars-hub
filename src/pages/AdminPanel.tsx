@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
