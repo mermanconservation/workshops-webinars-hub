@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList, Sparkles, Loader2 } from 'lucide-react';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { QuizEditor } from '@/components/QuizEditor';
 import { Button } from '@/components/ui/button';
