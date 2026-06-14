@@ -1097,6 +1097,80 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
   const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
+  const [aiBusy, setAiBusy] = useState<string | null>(null); // lesson:<id> or final:<courseId>
+  const [finalPicker, setFinalPicker] = useState<{ courseId: string; selected: Set<string> } | null>(null);
+
+  const generateLessonQuiz = async (courseId: string, lesson: any) => {
+    setAiBusy('lesson:' + lesson.id);
+    try {
+      const course = courses.find(c => c.id === courseId);
+      const { data, error } = await supabase.functions.invoke('generate-quiz', {
+        body: {
+          kind: 'lesson',
+          courseTitle: course?.title || '',
+          lessons: [{ title: lesson.title, description: lesson.description || '' }],
+          count: 5,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setQuizEditorOpen({
+        courseId,
+        quiz: {
+          title: (data as any).title,
+          kind: 'lesson',
+          lesson_id: lesson.id,
+          pass_score: 70,
+          questions: (data as any).questions,
+        },
+      });
+      toast({ title: 'AI quiz drafted', description: 'Review and edit before saving.' });
+    } catch (e: any) {
+      toast({ title: 'AI generation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const generateFinalExam = async (courseId: string) => {
+    if (!finalPicker || finalPicker.selected.size === 0) {
+      toast({ title: 'Pick at least one lesson', variant: 'destructive' });
+      return;
+    }
+    setAiBusy('final:' + courseId);
+    try {
+      const course = courses.find(c => c.id === courseId);
+      const lessons = (lessonsByCourse[courseId] || [])
+        .filter(l => finalPicker.selected.has(l.id))
+        .map(l => ({ title: l.title, description: l.description || '' }));
+      const { data, error } = await supabase.functions.invoke('generate-quiz', {
+        body: {
+          kind: 'final',
+          courseTitle: course?.title || '',
+          lessons,
+          count: Math.min(15, Math.max(5, lessons.length * 3)),
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setFinalPicker(null);
+      setQuizEditorOpen({
+        courseId,
+        quiz: {
+          title: (data as any).title,
+          kind: 'final',
+          lesson_id: null,
+          pass_score: 70,
+          questions: (data as any).questions,
+        },
+      });
+      toast({ title: 'Final exam drafted', description: 'Review and edit before saving.' });
+    } catch (e: any) {
+      toast({ title: 'AI generation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiBusy(null);
+    }
+  };
 
   const loadQuizzes = async (courseId: string) => {
     try {
