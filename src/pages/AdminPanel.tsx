@@ -1716,14 +1716,55 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                           <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
                         </h4>
                         {!quizEditorOpen && (
-                          <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
-                            <Plus className="w-3 h-3" /> Add quiz
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setFinalPicker({ courseId: c.id, selected: new Set((lessonsByCourse[c.id] || []).map(l => l.id)) })}
+                              className="text-xs text-accent hover:underline inline-flex items-center gap-1"
+                              disabled={(lessonsByCourse[c.id] || []).length === 0}
+                            >
+                              <Sparkles className="w-3 h-3" /> AI final exam
+                            </button>
+                            <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                              <Plus className="w-3 h-3" /> Add quiz
+                            </button>
+                          </div>
                         )}
                       </div>
 
-                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && (
-                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, or a final exam that gates the certificate.</p>
+                      {finalPicker?.courseId === c.id && (
+                        <div className="bg-background border border-accent rounded-md p-3 mb-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-semibold flex items-center gap-1"><Sparkles className="w-3 h-3 text-accent" /> Pick lessons to base the final exam on</div>
+                            <button onClick={() => setFinalPicker(null)}><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                          </div>
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {(lessonsByCourse[c.id] || []).map(l => (
+                              <label key={l.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={finalPicker.selected.has(l.id)}
+                                  onChange={e => {
+                                    const next = new Set(finalPicker.selected);
+                                    if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                                    setFinalPicker({ ...finalPicker, selected: next });
+                                  }}
+                                />
+                                <span className="truncate">{l.title}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setFinalPicker(null)}>Cancel</Button>
+                            <Button size="sm" onClick={() => generateFinalExam(c.id)} disabled={aiBusy === 'final:' + c.id} className="bg-accent text-accent-foreground gap-1">
+                              {aiBusy === 'final:' + c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                              Generate with AI
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && !finalPicker && (
+                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, an AI-generated quiz from a lesson (sparkles icon next to each lesson), or a final exam that gates the certificate.</p>
                       )}
 
                       <div className="space-y-1.5 mb-3">
