@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, Video, FileText, Users, Settings, Award, LogOut, Eye, ImagePlus, UserPlus, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Image as ImageIcon, Presentation, File as FileIcon, Download, FileJson, FileUp, ClipboardList, Sparkles, Loader2 } from 'lucide-react';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { QuizEditor } from '@/components/QuizEditor';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'workshops' | 'courses' | 'presenters' | 'settings';
 
@@ -1096,6 +1097,80 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
   const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
+  const [aiBusy, setAiBusy] = useState<string | null>(null); // lesson:<id> or final:<courseId>
+  const [finalPicker, setFinalPicker] = useState<{ courseId: string; selected: Set<string> } | null>(null);
+
+  const generateLessonQuiz = async (courseId: string, lesson: any) => {
+    setAiBusy('lesson:' + lesson.id);
+    try {
+      const course = courses.find(c => c.id === courseId);
+      const { data, error } = await supabase.functions.invoke('generate-quiz', {
+        body: {
+          kind: 'lesson',
+          courseTitle: course?.title || '',
+          lessons: [{ title: lesson.title, description: lesson.description || '' }],
+          count: 5,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setQuizEditorOpen({
+        courseId,
+        quiz: {
+          title: (data as any).title,
+          kind: 'lesson',
+          lesson_id: lesson.id,
+          pass_score: 70,
+          questions: (data as any).questions,
+        },
+      });
+      toast({ title: 'AI quiz drafted', description: 'Review and edit before saving.' });
+    } catch (e: any) {
+      toast({ title: 'AI generation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const generateFinalExam = async (courseId: string) => {
+    if (!finalPicker || finalPicker.selected.size === 0) {
+      toast({ title: 'Pick at least one lesson', variant: 'destructive' });
+      return;
+    }
+    setAiBusy('final:' + courseId);
+    try {
+      const course = courses.find(c => c.id === courseId);
+      const lessons = (lessonsByCourse[courseId] || [])
+        .filter(l => finalPicker.selected.has(l.id))
+        .map(l => ({ title: l.title, description: l.description || '' }));
+      const { data, error } = await supabase.functions.invoke('generate-quiz', {
+        body: {
+          kind: 'final',
+          courseTitle: course?.title || '',
+          lessons,
+          count: Math.min(15, Math.max(5, lessons.length * 3)),
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setFinalPicker(null);
+      setQuizEditorOpen({
+        courseId,
+        quiz: {
+          title: (data as any).title,
+          kind: 'final',
+          lesson_id: null,
+          pass_score: 70,
+          questions: (data as any).questions,
+        },
+      });
+      toast({ title: 'Final exam drafted', description: 'Review and edit before saving.' });
+    } catch (e: any) {
+      toast({ title: 'AI generation failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiBusy(null);
+    }
+  };
 
   const loadQuizzes = async (courseId: string) => {
     try {
@@ -1587,6 +1662,9 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                               <div className="flex gap-1 items-center">
                                 <button onClick={() => moveLesson(c.id, l.id, -1)} disabled={lidx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
                                 <button onClick={() => moveLesson(c.id, l.id, 1)} disabled={lidx === lessons.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                                <button onClick={() => generateLessonQuiz(c.id, l)} disabled={aiBusy === 'lesson:' + l.id} title="Generate quiz with AI" className="disabled:opacity-30">
+                                  {aiBusy === 'lesson:' + l.id ? <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-accent" />}
+                                </button>
                                 <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                                 <button onClick={() => deleteLesson(c.id, l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                               </div>
@@ -1638,14 +1716,55 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                           <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
                         </h4>
                         {!quizEditorOpen && (
-                          <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
-                            <Plus className="w-3 h-3" /> Add quiz
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setFinalPicker({ courseId: c.id, selected: new Set((lessonsByCourse[c.id] || []).map(l => l.id)) })}
+                              className="text-xs text-accent hover:underline inline-flex items-center gap-1"
+                              disabled={(lessonsByCourse[c.id] || []).length === 0}
+                            >
+                              <Sparkles className="w-3 h-3" /> AI final exam
+                            </button>
+                            <button onClick={() => setQuizEditorOpen({ courseId: c.id, quiz: null })} className="text-xs text-accent hover:underline inline-flex items-center gap-1">
+                              <Plus className="w-3 h-3" /> Add quiz
+                            </button>
+                          </div>
                         )}
                       </div>
 
-                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && (
-                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, or a final exam that gates the certificate.</p>
+                      {finalPicker?.courseId === c.id && (
+                        <div className="bg-background border border-accent rounded-md p-3 mb-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-semibold flex items-center gap-1"><Sparkles className="w-3 h-3 text-accent" /> Pick lessons to base the final exam on</div>
+                            <button onClick={() => setFinalPicker(null)}><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                          </div>
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {(lessonsByCourse[c.id] || []).map(l => (
+                              <label key={l.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={finalPicker.selected.has(l.id)}
+                                  onChange={e => {
+                                    const next = new Set(finalPicker.selected);
+                                    if (e.target.checked) next.add(l.id); else next.delete(l.id);
+                                    setFinalPicker({ ...finalPicker, selected: next });
+                                  }}
+                                />
+                                <span className="truncate">{l.title}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setFinalPicker(null)}>Cancel</Button>
+                            <Button size="sm" onClick={() => generateFinalExam(c.id)} disabled={aiBusy === 'final:' + c.id} className="bg-accent text-accent-foreground gap-1">
+                              {aiBusy === 'final:' + c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                              Generate with AI
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {(quizzesByCourse[c.id] || []).length === 0 && !quizEditorOpen && !finalPicker && (
+                        <p className="text-xs text-muted-foreground">No quizzes yet. Add a knowledge check for a lesson, an AI-generated quiz from a lesson (sparkles icon next to each lesson), or a final exam that gates the certificate.</p>
                       )}
 
                       <div className="space-y-1.5 mb-3">
