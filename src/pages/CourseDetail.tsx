@@ -38,6 +38,8 @@ const CourseDetail = () => {
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
   const [finalQuiz, setFinalQuiz] = useState<any>(null);
   const [finalPassed, setFinalPassed] = useState(false);
+  const [lessonQuizzes, setLessonQuizzes] = useState<any[]>([]);
+  const [lessonQuizzesAllPassed, setLessonQuizzesAllPassed] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -49,12 +51,26 @@ const CourseDetail = () => {
         const fq = (quizzes || []).find((q: any) => q.kind === 'final');
         if (fq) {
           const parsed = z.array(QuestionSchema).safeParse(fq.questions);
-          if (parsed.success) setFinalQuiz({ ...fq, questions: parsed.data });
+          if (parsed.success) {
+            const overriddenPass = typeof c?.final_pass_score === 'number' ? c.final_pass_score : fq.pass_score;
+            setFinalQuiz({ ...fq, pass_score: overriddenPass, questions: parsed.data });
+          }
         }
+        setLessonQuizzes((quizzes || []).filter((q: any) => q.kind === 'lesson'));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Track whether every lesson quiz has been passed (only matters when course requires it)
+  useEffect(() => {
+    if (!progressEmail.trim() || lessonQuizzes.length === 0) {
+      setLessonQuizzesAllPassed(lessonQuizzes.length === 0);
+      return;
+    }
+    Promise.all(lessonQuizzes.map(q => getBestAttempt(q.id, progressEmail).catch(() => null)))
+      .then(results => setLessonQuizzesAllPassed(results.every(r => !!r)));
+  }, [lessonQuizzes, progressEmail]);
 
   const loadProgress = async (email: string) => {
     if (!id || !email.trim()) return;
