@@ -149,6 +149,7 @@ const CourseDetail = () => {
         companyLogoUrl: company?.logo_url,
         type: 'course_completion',
         verificationCode,
+        templateUrl: course.certificate_template_url || undefined,
       });
       setIssuedCode(verificationCode);
       toast({ title: 'Certificate downloaded!', description: `Verification code: ${verificationCode}` });
