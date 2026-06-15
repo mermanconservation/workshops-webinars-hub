@@ -1904,6 +1904,21 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                         />
                       )}
                     </div>
+
+                    {/* Bottom-of-course final exam button */}
+                    {!quizEditorOpen && !(quizzesByCourse[c.id] || []).some((q: any) => q.kind === 'final') && (
+                      <div className="border-t border-border pt-4 flex flex-wrap gap-2 items-center justify-between">
+                        <p className="text-xs text-muted-foreground">No final exam for this course yet. The final exam gates the certificate when enabled in settings.</p>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button size="sm" variant="outline" onClick={() => setFinalPicker({ courseId: c.id, selected: new Set((lessonsByCourse[c.id] || []).map(l => l.id)) })} disabled={(lessonsByCourse[c.id] || []).length === 0} className="gap-1">
+                            <Sparkles className="w-3.5 h-3.5" /> AI final exam
+                          </Button>
+                          <Button size="sm" onClick={() => openFinalExamEditor(c.id)} className="bg-accent text-accent-foreground gap-1">
+                            <Plus className="w-3.5 h-3.5" /> Add final exam
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>
