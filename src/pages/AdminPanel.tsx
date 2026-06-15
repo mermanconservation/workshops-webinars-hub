@@ -1771,7 +1771,49 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                     </div>
 
                     {/* Quizzes & Final Exam */}
-                    <div>
+                    {/* Course Settings */}
+                    <div className="bg-background border border-border rounded-md p-3 space-y-3">
+                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1"><Settings className="w-4 h-4 text-accent" /> Course assessment & certificate settings</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="text-xs space-y-1 block">
+                          <span className="text-muted-foreground">Final exam pass mark (%)</span>
+                          <Input type="number" min={0} max={100} value={c.final_pass_score ?? 70} onChange={e => setCourses(cs => cs.map(x => x.id === c.id ? { ...x, final_pass_score: parseInt(e.target.value) || 0 } : x))} onBlur={e => updateCourseField(c.id, { final_pass_score: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm" />
+                        </label>
+                        <label className="text-xs space-y-1 block">
+                          <span className="text-muted-foreground">Lesson-quiz weight in final score (%) — remainder is the final exam</span>
+                          <Input type="number" min={0} max={100} value={c.lesson_quiz_weight ?? 0} onChange={e => setCourses(cs => cs.map(x => x.id === c.id ? { ...x, lesson_quiz_weight: parseInt(e.target.value) || 0 } : x))} onBlur={e => updateCourseField(c.id, { lesson_quiz_weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm" />
+                        </label>
+                      </div>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="text-xs inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={!!c.require_final_exam} onChange={e => updateCourseField(c.id, { require_final_exam: e.target.checked })} />
+                          <span>Certificate requires final exam</span>
+                        </label>
+                        <label className="text-xs inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={!!c.require_all_lesson_quizzes} onChange={e => updateCourseField(c.id, { require_all_lesson_quizzes: e.target.checked })} />
+                          <span>Require all lesson quizzes passed</span>
+                        </label>
+                      </div>
+                      <div className="pt-2 border-t border-border">
+                        <div className="text-xs font-semibold text-foreground mb-1.5">Certificate template (optional — image or PDF used as the certificate background)</div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-accent hover:underline">
+                            <Upload className="w-3 h-3" /> {c.certificate_template_url ? 'Replace template' : 'Upload template'}
+                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) { uploadCertificateTemplate(c.id, e.target.files[0]); e.target.value = ''; } }} />
+                          </label>
+                          {c.certificate_template_url && (
+                            <>
+                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Preview current</a>
+                              <button onClick={() => updateCourseField(c.id, { certificate_template_url: null })} className="text-xs text-destructive inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Remove</button>
+                            </>
+                          )}
+                          {!c.certificate_template_url && <span className="text-xs text-muted-foreground">Default certificate design is used when none is uploaded.</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quizzes & Final Exam */}
+                    <div id={`quiz-section-${c.id}`}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-semibold text-foreground flex items-center gap-1">
                           <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
