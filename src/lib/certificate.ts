@@ -17,6 +17,7 @@ interface CertificateData {
   verificationCode?: string;
   verificationUrl?: string;
   certificateTitle?: string;
+  templateUrl?: string;
 }
 
 export async function generateCertificatePDF(data: CertificateData) {
