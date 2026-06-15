@@ -1712,6 +1712,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                                 <button onClick={() => generateLessonQuiz(c.id, l)} disabled={aiBusy === 'lesson:' + l.id} title="Generate quiz with AI" className="disabled:opacity-30">
                                   {aiBusy === 'lesson:' + l.id ? <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-accent" />}
                                 </button>
+                                <button onClick={() => openLessonQuizEditor(c.id, l)} title="Add quiz for this lesson" className="text-accent"><ClipboardList className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                                 <button onClick={() => deleteLesson(c.id, l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                               </div>
