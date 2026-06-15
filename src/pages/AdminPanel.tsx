@@ -1322,6 +1322,53 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
+  const updateCourseField = async (courseId: string, patch: Record<string, any>) => {
+    try {
+      await adminRequest('update', 'courses', patch, courseId, undefined, adminPwd);
+      setCourses(cs => cs.map(c => c.id === courseId ? { ...c, ...patch } : c));
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const uploadCertificateTemplate = async (courseId: string, file: File) => {
+    try {
+      const url = await uploadFile(file, `certificate-templates/${courseId}`);
+      await updateCourseField(courseId, { certificate_template_url: url });
+      toast({ title: 'Certificate template uploaded' });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const openLessonQuizEditor = (courseId: string, lesson: any) => {
+    setQuizEditorOpen({
+      courseId,
+      quiz: {
+        title: `${lesson.title} — Knowledge check`,
+        kind: 'lesson',
+        lesson_id: lesson.id,
+        pass_score: 70,
+        questions: [],
+      },
+    });
+    setTimeout(() => document.getElementById(`quiz-section-${courseId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
+  const openFinalExamEditor = (courseId: string) => {
+    setQuizEditorOpen({
+      courseId,
+      quiz: {
+        title: 'Final exam',
+        kind: 'final',
+        lesson_id: null,
+        pass_score: courses.find(c => c.id === courseId)?.final_pass_score || 70,
+        questions: [],
+      },
+    });
+    setTimeout(() => document.getElementById(`quiz-section-${courseId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
   const toggleExpand = (courseId: string) => {
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
