@@ -34,20 +34,33 @@ export async function generateCertificatePDF(data: CertificateData) {
   pdf.setFillColor(252, 253, 255);
   pdf.rect(0, 0, width, height, 'F');
 
-  // Ocean blue border - double line
-  pdf.setDrawColor(15, 76, 129);
-  pdf.setLineWidth(2.5);
-  pdf.rect(8, 8, width - 16, height - 16);
-  pdf.setDrawColor(56, 149, 211);
-  pdf.setLineWidth(0.8);
-  pdf.rect(12, 12, width - 24, height - 24);
+  let useTemplateBackground = false;
+  if (data.templateUrl && !/\.pdf($|\?)/i.test(data.templateUrl)) {
+    try {
+      const bg = await loadImage(data.templateUrl);
+      pdf.addImage(bg, 'PNG', 0, 0, width, height);
+      useTemplateBackground = true;
+    } catch (e) {
+      console.warn('Could not load certificate template, falling back to default design', e);
+    }
+  }
 
-  // Subtle decorative lines at top
-  pdf.setDrawColor(56, 149, 211);
-  for (let i = 0; i < 3; i++) {
-    const y = 16 + i * 1.5;
-    pdf.setLineWidth(0.3 * (1 - i * 0.3));
-    pdf.line(20, y, width - 20, y);
+  if (!useTemplateBackground) {
+    // Ocean blue border - double line
+    pdf.setDrawColor(15, 76, 129);
+    pdf.setLineWidth(2.5);
+    pdf.rect(8, 8, width - 16, height - 16);
+    pdf.setDrawColor(56, 149, 211);
+    pdf.setLineWidth(0.8);
+    pdf.rect(12, 12, width - 24, height - 24);
+
+    // Subtle decorative lines at top
+    pdf.setDrawColor(56, 149, 211);
+    for (let i = 0; i < 3; i++) {
+      const y = 16 + i * 1.5;
+      pdf.setLineWidth(0.3 * (1 - i * 0.3));
+      pdf.line(20, y, width - 20, y);
+    }
   }
 
   // Company logo
