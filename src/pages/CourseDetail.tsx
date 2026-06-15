@@ -15,7 +15,7 @@ import {
   generateCertificateText,
   saveCertificateVerification,
 } from '@/lib/api';
-import { getCourseQuizzes, QuestionSchema } from '@/lib/quiz';
+import { getCourseQuizzes, QuestionSchema, getBestAttempt } from '@/lib/quiz';
 import { z } from 'zod';
 import { MaterialPreviewGrid } from '@/components/MaterialPreview';
 import { QuizRunner } from '@/components/QuizRunner';
