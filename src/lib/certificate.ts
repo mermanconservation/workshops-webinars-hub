@@ -216,11 +216,13 @@ export async function generateCertificatePDF(data: CertificateData) {
   }
 
   // Bottom decorative lines
-  pdf.setDrawColor(56, 149, 211);
-  for (let i = 0; i < 3; i++) {
-    const y = height - 16 - i * 1.5;
-    pdf.setLineWidth(0.3 * (1 - i * 0.3));
-    pdf.line(20, y, width - 20, y);
+  if (!useTemplateBackground) {
+    pdf.setDrawColor(56, 149, 211);
+    for (let i = 0; i < 3; i++) {
+      const y = height - 16 - i * 1.5;
+      pdf.setLineWidth(0.3 * (1 - i * 0.3));
+      pdf.line(20, y, width - 20, y);
+    }
   }
 
   // Download
