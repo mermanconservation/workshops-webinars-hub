@@ -1746,12 +1746,25 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                         <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
                         <RichTextEditor value={lessonForm.description} onChange={(html) => setLessonForm(f => ({ ...f, description: html }))} placeholder="Lesson content — use the toolbar to add headings, lists, links, images…" />
                         <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap items-center">
                           <Button size="sm" onClick={() => saveLesson(c.id)} className="bg-accent text-accent-foreground gap-1">
                             <Save className="w-3.5 h-3.5" /> {editLessonId ? 'Update' : 'Add lesson'}
                           </Button>
                           {editLessonId && (
-                            <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 ml-auto"
+                                onClick={() => {
+                                  const lesson = (lessonsByCourse[c.id] || []).find(l => l.id === editLessonId);
+                                  if (lesson) openLessonQuizEditor(c.id, lesson);
+                                }}
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" /> Add quiz for this lesson
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
