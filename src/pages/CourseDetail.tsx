@@ -257,44 +257,63 @@ const CourseDetail = () => {
               })}
             </div>
 
-            {allLessonsComplete && finalQuiz && (
-              <div className="mt-6 bg-card border border-border rounded-lg p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5 text-accent" />
-                  <h3 className="font-display font-bold text-foreground">Final exam — required for your certificate</h3>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  You must pass with at least {finalQuiz.pass_score}% to unlock your Certificate of Course Completion.
-                  A failed attempt locks retake for 24 hours.
-                </p>
-                <QuizRunner quiz={finalQuiz} email={progressEmail} enforceCooldown onPassed={setFinalPassed} />
-              </div>
-            )}
+            {(() => {
+              const requireFinal = course?.require_final_exam !== false;
+              const requireAllLessonQuizzes = !!course?.require_all_lesson_quizzes;
+              const showFinalPanel = allLessonsComplete && finalQuiz && requireFinal;
+              const certUnlocked =
+                allLessonsComplete &&
+                (!requireFinal || !finalQuiz || finalPassed) &&
+                (!requireAllLessonQuizzes || lessonQuizzesAllPassed);
+              return (
+                <>
+                  {showFinalPanel && (
+                    <div className="mt-6 bg-card border border-border rounded-lg p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ClipboardCheck className="w-5 h-5 text-accent" />
+                        <h3 className="font-display font-bold text-foreground">Final exam — required for your certificate</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        You must pass with at least {finalQuiz.pass_score}% to unlock your Certificate of Course Completion.
+                        A failed attempt locks retake for 24 hours.
+                      </p>
+                      <QuizRunner quiz={finalQuiz} email={progressEmail} enforceCooldown onPassed={setFinalPassed} />
+                    </div>
+                  )}
 
-            {allLessonsComplete && (!finalQuiz || finalPassed) && (
-              <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Award className="w-8 h-8" />
-                  <div>
-                    <h3 className="font-display font-bold">Course completed!</h3>
-                    <p className="text-sm opacity-90">Enter your full name and download your Certificate of Course Completion.</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Input placeholder="Your full name" value={participantName} onChange={e => setParticipantName(e.target.value)} className="flex-1 min-w-[200px] bg-background text-foreground" />
-                  <Button onClick={downloadCourseCertificate} disabled={certLoading} className="bg-accent text-accent-foreground hover:opacity-90 gap-2">
-                    <Download className="w-4 h-4" /> {certLoading ? 'Generating...' : 'Download Certificate'}
-                  </Button>
-                </div>
-                {issuedCode && (
-                  <div className="text-xs bg-black/20 rounded-md px-3 py-2 flex flex-wrap items-center gap-2">
-                    <span className="opacity-80">Verification code:</span>
-                    <code className="font-mono">{issuedCode}</code>
-                    <Link to={`/verify?code=${issuedCode}`} className="underline ml-auto">Verify online</Link>
-                  </div>
-                )}
-              </div>
-            )}
+                  {allLessonsComplete && requireAllLessonQuizzes && !lessonQuizzesAllPassed && (
+                    <div className="mt-6 bg-card border border-border rounded-lg p-4 text-sm text-muted-foreground">
+                      You must pass every lesson knowledge check before downloading your certificate. Open any lesson that still needs a passing attempt.
+                    </div>
+                  )}
+
+                  {certUnlocked && (
+                    <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Award className="w-8 h-8" />
+                        <div>
+                          <h3 className="font-display font-bold">Course completed!</h3>
+                          <p className="text-sm opacity-90">Enter your full name and download your Certificate of Course Completion.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Input placeholder="Your full name" value={participantName} onChange={e => setParticipantName(e.target.value)} className="flex-1 min-w-[200px] bg-background text-foreground" />
+                        <Button onClick={downloadCourseCertificate} disabled={certLoading} className="bg-accent text-accent-foreground hover:opacity-90 gap-2">
+                          <Download className="w-4 h-4" /> {certLoading ? 'Generating...' : 'Download Certificate'}
+                        </Button>
+                      </div>
+                      {issuedCode && (
+                        <div className="text-xs bg-black/20 rounded-md px-3 py-2 flex flex-wrap items-center gap-2">
+                          <span className="opacity-80">Verification code:</span>
+                          <code className="font-mono">{issuedCode}</code>
+                          <Link to={`/verify?code=${issuedCode}`} className="underline ml-auto">Verify online</Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </section>
         )}
 
