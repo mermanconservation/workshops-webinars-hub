@@ -1322,6 +1322,53 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     load();
   };
 
+  const updateCourseField = async (courseId: string, patch: Record<string, any>) => {
+    try {
+      await adminRequest('update', 'courses', patch, courseId, undefined, adminPwd);
+      setCourses(cs => cs.map(c => c.id === courseId ? { ...c, ...patch } : c));
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const uploadCertificateTemplate = async (courseId: string, file: File) => {
+    try {
+      const url = await uploadFile(file, `certificate-templates/${courseId}`);
+      await updateCourseField(courseId, { certificate_template_url: url });
+      toast({ title: 'Certificate template uploaded' });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const openLessonQuizEditor = (courseId: string, lesson: any) => {
+    setQuizEditorOpen({
+      courseId,
+      quiz: {
+        title: `${lesson.title} — Knowledge check`,
+        kind: 'lesson',
+        lesson_id: lesson.id,
+        pass_score: 70,
+        questions: [],
+      },
+    });
+    setTimeout(() => document.getElementById(`quiz-section-${courseId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
+  const openFinalExamEditor = (courseId: string) => {
+    setQuizEditorOpen({
+      courseId,
+      quiz: {
+        title: 'Final exam',
+        kind: 'final',
+        lesson_id: null,
+        pass_score: courses.find(c => c.id === courseId)?.final_pass_score || 70,
+        questions: [],
+      },
+    });
+    setTimeout(() => document.getElementById(`quiz-section-${courseId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
   const toggleExpand = (courseId: string) => {
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
@@ -1665,6 +1712,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                                 <button onClick={() => generateLessonQuiz(c.id, l)} disabled={aiBusy === 'lesson:' + l.id} title="Generate quiz with AI" className="disabled:opacity-30">
                                   {aiBusy === 'lesson:' + l.id ? <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-accent" />}
                                 </button>
+                                <button onClick={() => openLessonQuizEditor(c.id, l)} title="Add quiz for this lesson" className="text-accent"><ClipboardList className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => { setEditLessonId(l.id); setLessonForm({ title: l.title, description: l.description || '', video_url: l.video_url || '' }); }} title="Edit"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                                 <button onClick={() => deleteLesson(c.id, l.id)} title="Delete"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                               </div>
@@ -1698,19 +1746,74 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                         <Input placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
                         <RichTextEditor value={lessonForm.description} onChange={(html) => setLessonForm(f => ({ ...f, description: html }))} placeholder="Lesson content — use the toolbar to add headings, lists, links, images…" />
                         <Input placeholder="YouTube URL (optional)" value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} className="text-sm" />
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap items-center">
                           <Button size="sm" onClick={() => saveLesson(c.id)} className="bg-accent text-accent-foreground gap-1">
                             <Save className="w-3.5 h-3.5" /> {editLessonId ? 'Update' : 'Add lesson'}
                           </Button>
                           {editLessonId && (
-                            <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditLessonId(null); setLessonForm({ title: '', description: '', video_url: '' }); }}>Cancel</Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 ml-auto"
+                                onClick={() => {
+                                  const lesson = (lessonsByCourse[c.id] || []).find(l => l.id === editLessonId);
+                                  if (lesson) openLessonQuizEditor(c.id, lesson);
+                                }}
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" /> Add quiz for this lesson
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* Quizzes & Final Exam */}
-                    <div>
+                    {/* Course Settings */}
+                    <div className="bg-background border border-border rounded-md p-3 space-y-3">
+                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1"><Settings className="w-4 h-4 text-accent" /> Course assessment & certificate settings</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="text-xs space-y-1 block">
+                          <span className="text-muted-foreground">Final exam pass mark (%)</span>
+                          <Input type="number" min={0} max={100} value={c.final_pass_score ?? 70} onChange={e => setCourses(cs => cs.map(x => x.id === c.id ? { ...x, final_pass_score: parseInt(e.target.value) || 0 } : x))} onBlur={e => updateCourseField(c.id, { final_pass_score: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm" />
+                        </label>
+                        <label className="text-xs space-y-1 block">
+                          <span className="text-muted-foreground">Lesson-quiz weight in final score (%) — remainder is the final exam</span>
+                          <Input type="number" min={0} max={100} value={c.lesson_quiz_weight ?? 0} onChange={e => setCourses(cs => cs.map(x => x.id === c.id ? { ...x, lesson_quiz_weight: parseInt(e.target.value) || 0 } : x))} onBlur={e => updateCourseField(c.id, { lesson_quiz_weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} className="h-8 text-sm" />
+                        </label>
+                      </div>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="text-xs inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={!!c.require_final_exam} onChange={e => updateCourseField(c.id, { require_final_exam: e.target.checked })} />
+                          <span>Certificate requires final exam</span>
+                        </label>
+                        <label className="text-xs inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={!!c.require_all_lesson_quizzes} onChange={e => updateCourseField(c.id, { require_all_lesson_quizzes: e.target.checked })} />
+                          <span>Require all lesson quizzes passed</span>
+                        </label>
+                      </div>
+                      <div className="pt-2 border-t border-border">
+                        <div className="text-xs font-semibold text-foreground mb-1.5">Certificate template (optional — image or PDF used as the certificate background)</div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-accent hover:underline">
+                            <Upload className="w-3 h-3" /> {c.certificate_template_url ? 'Replace template' : 'Upload template'}
+                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) { uploadCertificateTemplate(c.id, e.target.files[0]); e.target.value = ''; } }} />
+                          </label>
+                          {c.certificate_template_url && (
+                            <>
+                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Preview current</a>
+                              <button onClick={() => updateCourseField(c.id, { certificate_template_url: null })} className="text-xs text-destructive inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Remove</button>
+                            </>
+                          )}
+                          {!c.certificate_template_url && <span className="text-xs text-muted-foreground">Default certificate design is used when none is uploaded.</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quizzes & Final Exam */}
+                    <div id={`quiz-section-${c.id}`}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-semibold text-foreground flex items-center gap-1">
                           <ClipboardList className="w-4 h-4 text-accent" /> Quizzes & final exam
@@ -1801,6 +1904,21 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                         />
                       )}
                     </div>
+
+                    {/* Bottom-of-course final exam button */}
+                    {!quizEditorOpen && !(quizzesByCourse[c.id] || []).some((q: any) => q.kind === 'final') && (
+                      <div className="border-t border-border pt-4 flex flex-wrap gap-2 items-center justify-between">
+                        <p className="text-xs text-muted-foreground">No final exam for this course yet. The final exam gates the certificate when enabled in settings.</p>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button size="sm" variant="outline" onClick={() => setFinalPicker({ courseId: c.id, selected: new Set((lessonsByCourse[c.id] || []).map(l => l.id)) })} disabled={(lessonsByCourse[c.id] || []).length === 0} className="gap-1">
+                            <Sparkles className="w-3.5 h-3.5" /> AI final exam
+                          </Button>
+                          <Button size="sm" onClick={() => openFinalExamEditor(c.id)} className="bg-accent text-accent-foreground gap-1">
+                            <Plus className="w-3.5 h-3.5" /> Add final exam
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>

@@ -144,32 +144,47 @@ export type Database = {
       }
       courses: {
         Row: {
+          certificate_template_url: string | null
           cover_image_url: string | null
           created_at: string
           description: string | null
+          final_pass_score: number
           id: string
+          lesson_quiz_weight: number
           materials: Json
           order_index: number
+          require_all_lesson_quizzes: boolean
+          require_final_exam: boolean
           title: string
           updated_at: string
         }
         Insert: {
+          certificate_template_url?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          final_pass_score?: number
           id?: string
+          lesson_quiz_weight?: number
           materials?: Json
           order_index?: number
+          require_all_lesson_quizzes?: boolean
+          require_final_exam?: boolean
           title: string
           updated_at?: string
         }
         Update: {
+          certificate_template_url?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          final_pass_score?: number
           id?: string
+          lesson_quiz_weight?: number
           materials?: Json
           order_index?: number
+          require_all_lesson_quizzes?: boolean
+          require_final_exam?: boolean
           title?: string
           updated_at?: string
         }
