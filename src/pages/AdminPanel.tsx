@@ -1204,7 +1204,10 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
       loadQuizzes(courseId);
       toast({ title: existingId ? 'Quiz updated' : 'Quiz created' });
     } catch (e: any) {
-      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+      const msg = e?.message || 'Unknown error while saving the quiz.';
+      toast({ title: 'Save failed', description: msg, variant: 'destructive' });
+      // Re-throw so QuizEditor surfaces the message inline next to its Save button.
+      throw new Error(msg);
     }
   };
 
