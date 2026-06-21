@@ -1804,9 +1804,15 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                             <Upload className="w-3 h-3" /> {c.certificate_template_url ? 'Replace template' : 'Upload template'}
                             <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) { uploadCertificateTemplate(c.id, e.target.files[0]); e.target.value = ''; } }} />
                           </label>
+                          <button
+                            onClick={() => setCertPreview({ url: c.certificate_template_url || null, title: c.title })}
+                            className="text-xs text-accent hover:underline inline-flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" /> Preview certificate
+                          </button>
                           {c.certificate_template_url && (
                             <>
-                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Preview current</a>
+                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Open original</a>
                               <button onClick={() => updateCourseField(c.id, { certificate_template_url: null })} className="text-xs text-destructive inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Remove</button>
                             </>
                           )}
