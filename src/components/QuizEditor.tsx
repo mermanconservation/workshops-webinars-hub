@@ -58,18 +58,21 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
   };
 
   const save = async () => {
-    if (!title.trim()) { alert('Quiz title is required.'); return; }
-    if (questions.length === 0) { alert('Add at least one question.'); return; }
-    if (kind === 'lesson' && !lessonId) { alert('Pick a lesson for this quiz, or change type to Final exam.'); return; }
-    for (const q of questions) {
-      if (!q.prompt.trim()) { alert('Every question needs a prompt.'); return; }
+    setError(null);
+    if (!title.trim()) { setError('Quiz title is required.'); return; }
+    if (questions.length === 0) { setError('Add at least one question.'); return; }
+    if (kind === 'lesson' && !lessonId) { setError('Pick a lesson for this quiz, or change the type to Final exam.'); return; }
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.prompt.trim()) { setError(`Question ${i + 1}: prompt is required.`); return; }
       if ((q.type === 'single' || q.type === 'multiple') && q.options.some(o => !o.trim())) {
-        alert('All answer options must be filled.'); return;
+        setError(`Question ${i + 1}: every answer option must be filled.`); return;
       }
       if (q.type === 'multiple' && (q.answer.length === 0)) {
-        alert('Select at least one correct option for multiple-answer questions.'); return;
+        setError(`Question ${i + 1}: select at least one correct option.`); return;
       }
-      if (q.type === 'short' && !q.answer.trim()) { alert('Short-answer questions need an expected answer.'); return; }
+      if (q.type === 'short' && !q.answer.trim()) { setError(`Question ${i + 1}: short answer needs an expected value.`); return; }
+      if (!q.points || q.points < 1) { setError(`Question ${i + 1}: points must be at least 1.`); return; }
     }
     setBusy(true);
     try {
@@ -80,6 +83,8 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
         pass_score: Math.max(0, Math.min(100, passScore)),
         questions,
       });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save quiz.');
     } finally { setBusy(false); }
   };
 
