@@ -112,6 +112,32 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
         )}
       </div>
 
+      {/* Score breakdown panel */}
+      <div className="bg-muted/30 border border-border rounded-md px-3 py-2 text-xs space-y-1">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+          <span><span className="text-muted-foreground">Questions:</span> <strong>{questions.length}</strong></span>
+          <span><span className="text-muted-foreground">Total points:</span> <strong>{totalPoints}</strong></span>
+          <span><span className="text-muted-foreground">Pass mark:</span> <strong>{passScore}%</strong> ({passPoints}/{totalPoints} pts)</span>
+          {kind === 'final' && (
+            <span className="text-muted-foreground">This score gates the certificate when "Final exam" is required.</span>
+          )}
+        </div>
+        {totalPoints > 0 && (
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1 relative">
+            <div className="h-full bg-accent/50" style={{ width: `${passScore}%` }} />
+            <div className="absolute top-0 bottom-0 w-px bg-accent" style={{ left: `${passScore}%` }} title={`Pass at ${passScore}%`} />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/40 rounded-md px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+
+
+
       <div className="space-y-3">
         {questions.map((q, idx) => (
           <div key={q.id} className="bg-card border border-border rounded-md p-3 space-y-2">
