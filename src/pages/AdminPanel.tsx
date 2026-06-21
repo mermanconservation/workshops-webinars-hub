@@ -1935,6 +1935,13 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
           })}
         </div>
       )}
+
+      <CourseCertificatePreview
+        open={!!certPreview}
+        onClose={() => setCertPreview(null)}
+        templateUrl={certPreview?.url ?? null}
+        courseTitle={certPreview?.title ?? ''}
+      />
     </div>
   );
 }
