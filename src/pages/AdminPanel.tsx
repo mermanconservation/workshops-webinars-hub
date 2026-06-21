@@ -1100,6 +1100,8 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
   const [aiBusy, setAiBusy] = useState<string | null>(null); // lesson:<id> or final:<courseId>
   const [finalPicker, setFinalPicker] = useState<{ courseId: string; selected: Set<string> } | null>(null);
+  const [certPreview, setCertPreview] = useState<{ url: string | null; title: string } | null>(null);
+
 
   const generateLessonQuiz = async (courseId: string, lesson: any) => {
     setAiBusy('lesson:' + lesson.id);
