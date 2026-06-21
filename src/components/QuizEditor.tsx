@@ -29,10 +29,16 @@ function emptyQuestion(type: Question['type']): Question {
 export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
   const [title, setTitle] = useState(initial?.title || '');
   const [kind, setKind] = useState<'lesson' | 'final'>(initial?.kind || 'lesson');
-  const [lessonId, setLessonId] = useState<string | null>(initial?.lesson_id ?? null);
+  const [lessonId, setLessonId] = useState<string | null>(
+    initial?.lesson_id ?? (initial?.kind !== 'final' && lessons.length > 0 ? lessons[0].id : null)
+  );
   const [passScore, setPassScore] = useState<number>(initial?.pass_score ?? 70);
   const [questions, setQuestions] = useState<Question[]>(initial?.questions || []);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const totalPoints = questions.reduce((s, q) => s + (q.points || 1), 0);
+  const passPoints = Math.ceil((totalPoints * passScore) / 100);
 
   const update = (idx: number, patch: Partial<Question>) => {
     setQuestions(qs => qs.map((q, i) => i === idx ? ({ ...q, ...patch } as Question) : q));
