@@ -19,6 +19,7 @@ import { getCourseQuizzes, QuestionSchema, getBestAttempt } from '@/lib/quiz';
 import { z } from 'zod';
 import { MaterialPreviewGrid } from '@/components/MaterialPreview';
 import { QuizRunner } from '@/components/QuizRunner';
+import { LearnerQuizSummary } from '@/components/LearnerQuizSummary';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -286,6 +287,18 @@ const CourseDetail = () => {
                       You must pass every lesson knowledge check before downloading your certificate. Open any lesson that still needs a passing attempt.
                     </div>
                   )}
+
+                  {allLessonsComplete && progressEmail.trim() && (lessonQuizzes.length > 0 || finalQuiz) && (
+                    <div className="mt-6">
+                      <LearnerQuizSummary
+                        email={progressEmail}
+                        lessonQuizzes={lessonQuizzes}
+                        finalQuiz={finalQuiz}
+                        lessons={lessons}
+                      />
+                    </div>
+                  )}
+
 
                   {certUnlocked && (
                     <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">

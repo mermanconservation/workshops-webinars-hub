@@ -195,6 +195,17 @@ export async function submitAttempt(params: {
   return data;
 }
 
+export async function getAllAttempts(quizId: string, email: string) {
+  const { data, error } = await supabase
+    .from('quiz_attempts')
+    .select('*')
+    .eq('quiz_id', quizId)
+    .eq('email', email.toLowerCase())
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 export function newQuestionId() {
   return 'q_' + Math.random().toString(36).slice(2, 10);
 }

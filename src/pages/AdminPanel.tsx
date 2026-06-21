@@ -11,6 +11,7 @@ import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorksho
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { CertificatePreview } from '@/components/CertificatePreview';
+import { CourseCertificatePreview } from '@/components/CourseCertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
@@ -1099,6 +1100,8 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
   const [aiBusy, setAiBusy] = useState<string | null>(null); // lesson:<id> or final:<courseId>
   const [finalPicker, setFinalPicker] = useState<{ courseId: string; selected: Set<string> } | null>(null);
+  const [certPreview, setCertPreview] = useState<{ url: string | null; title: string } | null>(null);
+
 
   const generateLessonQuiz = async (courseId: string, lesson: any) => {
     setAiBusy('lesson:' + lesson.id);
@@ -1201,7 +1204,10 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
       loadQuizzes(courseId);
       toast({ title: existingId ? 'Quiz updated' : 'Quiz created' });
     } catch (e: any) {
-      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+      const msg = e?.message || 'Unknown error while saving the quiz.';
+      toast({ title: 'Save failed', description: msg, variant: 'destructive' });
+      // Re-throw so QuizEditor surfaces the message inline next to its Save button.
+      throw new Error(msg);
     }
   };
 
@@ -1801,9 +1807,15 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                             <Upload className="w-3 h-3" /> {c.certificate_template_url ? 'Replace template' : 'Upload template'}
                             <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) { uploadCertificateTemplate(c.id, e.target.files[0]); e.target.value = ''; } }} />
                           </label>
+                          <button
+                            onClick={() => setCertPreview({ url: c.certificate_template_url || null, title: c.title })}
+                            className="text-xs text-accent hover:underline inline-flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" /> Preview certificate
+                          </button>
                           {c.certificate_template_url && (
                             <>
-                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Preview current</a>
+                              <a href={c.certificate_template_url} target="_blank" rel="noopener" className="text-xs text-muted-foreground hover:underline truncate max-w-xs">Open original</a>
                               <button onClick={() => updateCourseField(c.id, { certificate_template_url: null })} className="text-xs text-destructive inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Remove</button>
                             </>
                           )}
@@ -1926,6 +1938,13 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
           })}
         </div>
       )}
+
+      <CourseCertificatePreview
+        open={!!certPreview}
+        onClose={() => setCertPreview(null)}
+        templateUrl={certPreview?.url ?? null}
+        courseTitle={certPreview?.title ?? ''}
+      />
     </div>
   );
 }

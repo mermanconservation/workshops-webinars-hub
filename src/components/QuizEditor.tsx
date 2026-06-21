@@ -29,10 +29,16 @@ function emptyQuestion(type: Question['type']): Question {
 export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
   const [title, setTitle] = useState(initial?.title || '');
   const [kind, setKind] = useState<'lesson' | 'final'>(initial?.kind || 'lesson');
-  const [lessonId, setLessonId] = useState<string | null>(initial?.lesson_id ?? null);
+  const [lessonId, setLessonId] = useState<string | null>(
+    initial?.lesson_id ?? (initial?.kind !== 'final' && lessons.length > 0 ? lessons[0].id : null)
+  );
   const [passScore, setPassScore] = useState<number>(initial?.pass_score ?? 70);
   const [questions, setQuestions] = useState<Question[]>(initial?.questions || []);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const totalPoints = questions.reduce((s, q) => s + (q.points || 1), 0);
+  const passPoints = Math.ceil((totalPoints * passScore) / 100);
 
   const update = (idx: number, patch: Partial<Question>) => {
     setQuestions(qs => qs.map((q, i) => i === idx ? ({ ...q, ...patch } as Question) : q));
@@ -52,18 +58,21 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
   };
 
   const save = async () => {
-    if (!title.trim()) { alert('Quiz title is required.'); return; }
-    if (questions.length === 0) { alert('Add at least one question.'); return; }
-    if (kind === 'lesson' && !lessonId) { alert('Pick a lesson for this quiz, or change type to Final exam.'); return; }
-    for (const q of questions) {
-      if (!q.prompt.trim()) { alert('Every question needs a prompt.'); return; }
+    setError(null);
+    if (!title.trim()) { setError('Quiz title is required.'); return; }
+    if (questions.length === 0) { setError('Add at least one question.'); return; }
+    if (kind === 'lesson' && !lessonId) { setError('Pick a lesson for this quiz, or change the type to Final exam.'); return; }
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.prompt.trim()) { setError(`Question ${i + 1}: prompt is required.`); return; }
       if ((q.type === 'single' || q.type === 'multiple') && q.options.some(o => !o.trim())) {
-        alert('All answer options must be filled.'); return;
+        setError(`Question ${i + 1}: every answer option must be filled.`); return;
       }
       if (q.type === 'multiple' && (q.answer.length === 0)) {
-        alert('Select at least one correct option for multiple-answer questions.'); return;
+        setError(`Question ${i + 1}: select at least one correct option.`); return;
       }
-      if (q.type === 'short' && !q.answer.trim()) { alert('Short-answer questions need an expected answer.'); return; }
+      if (q.type === 'short' && !q.answer.trim()) { setError(`Question ${i + 1}: short answer needs an expected value.`); return; }
+      if (!q.points || q.points < 1) { setError(`Question ${i + 1}: points must be at least 1.`); return; }
     }
     setBusy(true);
     try {
@@ -74,6 +83,8 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
         pass_score: Math.max(0, Math.min(100, passScore)),
         questions,
       });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save quiz.');
     } finally { setBusy(false); }
   };
 
@@ -101,6 +112,32 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
         )}
       </div>
 
+      {/* Score breakdown panel */}
+      <div className="bg-muted/30 border border-border rounded-md px-3 py-2 text-xs space-y-1">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+          <span><span className="text-muted-foreground">Questions:</span> <strong>{questions.length}</strong></span>
+          <span><span className="text-muted-foreground">Total points:</span> <strong>{totalPoints}</strong></span>
+          <span><span className="text-muted-foreground">Pass mark:</span> <strong>{passScore}%</strong> ({passPoints}/{totalPoints} pts)</span>
+          {kind === 'final' && (
+            <span className="text-muted-foreground">This score gates the certificate when "Final exam" is required.</span>
+          )}
+        </div>
+        {totalPoints > 0 && (
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1 relative">
+            <div className="h-full bg-accent/50" style={{ width: `${passScore}%` }} />
+            <div className="absolute top-0 bottom-0 w-px bg-accent" style={{ left: `${passScore}%` }} title={`Pass at ${passScore}%`} />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/40 rounded-md px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+
+
+
       <div className="space-y-3">
         {questions.map((q, idx) => (
           <div key={q.id} className="bg-card border border-border rounded-md p-3 space-y-2">
@@ -113,6 +150,10 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
                 <option value="short">Short answer</option>
               </select>
               <Input type="number" min={1} value={q.points} onChange={e => update(idx, { points: Math.max(1, parseInt(e.target.value) || 1) } as any)} className="text-xs w-16 h-7" title="Points" />
+              <span className="text-[10px] text-muted-foreground" title="Share of the quiz total this question is worth">
+                {totalPoints > 0 ? `${Math.round(((q.points || 1) / totalPoints) * 100)}%` : '—'} of total
+              </span>
+
               <div className="ml-auto flex gap-1">
                 <button onClick={() => move(idx, -1)} disabled={idx === 0} className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => move(idx, 1)} disabled={idx === questions.length - 1} className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
