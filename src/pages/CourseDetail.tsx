@@ -288,6 +288,18 @@ const CourseDetail = () => {
                     </div>
                   )}
 
+                  {allLessonsComplete && progressEmail.trim() && (lessonQuizzes.length > 0 || finalQuiz) && (
+                    <div className="mt-6">
+                      <LearnerQuizSummary
+                        email={progressEmail}
+                        lessonQuizzes={lessonQuizzes}
+                        finalQuiz={finalQuiz}
+                        lessons={lessons}
+                      />
+                    </div>
+                  )}
+
+
                   {certUnlocked && (
                     <div className="mt-6 bg-gradient-forest text-primary-foreground rounded-lg p-6 space-y-4">
                       <div className="flex items-center gap-3">
