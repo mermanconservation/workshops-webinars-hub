@@ -150,6 +150,10 @@ export function QuizEditor({ initial, lessons, onSave, onCancel }: Props) {
                 <option value="short">Short answer</option>
               </select>
               <Input type="number" min={1} value={q.points} onChange={e => update(idx, { points: Math.max(1, parseInt(e.target.value) || 1) } as any)} className="text-xs w-16 h-7" title="Points" />
+              <span className="text-[10px] text-muted-foreground" title="Share of the quiz total this question is worth">
+                {totalPoints > 0 ? `${Math.round(((q.points || 1) / totalPoints) * 100)}%` : '—'} of total
+              </span>
+
               <div className="ml-auto flex gap-1">
                 <button onClick={() => move(idx, -1)} disabled={idx === 0} className="disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => move(idx, 1)} disabled={idx === questions.length - 1} className="disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-muted-foreground" /></button>
