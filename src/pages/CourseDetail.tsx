@@ -19,6 +19,7 @@ import { getCourseQuizzes, QuestionSchema, getBestAttempt } from '@/lib/quiz';
 import { z } from 'zod';
 import { MaterialPreviewGrid } from '@/components/MaterialPreview';
 import { QuizRunner } from '@/components/QuizRunner';
+import { LearnerQuizSummary } from '@/components/LearnerQuizSummary';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { useToast } from '@/hooks/use-toast';
 
