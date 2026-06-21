@@ -11,6 +11,7 @@ import { adminRequest, uploadFile, getPresenters, getCompanySettings, getWorksho
 import { generateCertificateText } from '@/lib/api';
 import { generateCertificatePDF } from '@/lib/certificate';
 import { CertificatePreview } from '@/components/CertificatePreview';
+import { CourseCertificatePreview } from '@/components/CourseCertificatePreview';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CourseExportSchema, LessonImportArraySchema, CURRENT_SCHEMA_VERSION, formatZodErrors, getCourseQuizzes, QuestionSchema, type Question } from '@/lib/quiz';
