@@ -177,10 +177,11 @@ export async function markCourseLessonComplete(lessonId: string, courseId: strin
 }
 
 export async function unmarkLessonComplete(lessonId: string, email: string) {
-  const { error } = await supabase.rpc('unmark_lesson_completion', {
-    p_lesson_id: lessonId,
-    p_email: email.toLowerCase(),
-  });
+  const { error } = await supabase
+    .from('lesson_completions')
+    .delete()
+    .eq('lesson_id', lessonId)
+    .eq('email', email.toLowerCase());
   if (error) throw error;
 }
 
@@ -217,11 +218,9 @@ export async function getCompanySettings() {
 }
 
 export async function getPresenters() {
-  // Email column is intentionally excluded from the public Data API surface
-  // (column-level GRANT). Admin code reads it via the admin-operations edge function.
   const { data, error } = await supabase
     .from('presenters')
-    .select('id, name, title, bio, photo_url, signature_url, created_at')
+    .select('*')
     .order('name');
   if (error) throw error;
   return data;

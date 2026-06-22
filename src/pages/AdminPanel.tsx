@@ -120,7 +120,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     try {
       const [ws, ps, cs] = await Promise.all([
         adminRequest('list', 'workshops', undefined, undefined, { order: { column: 'date', ascending: false } }, adminPwd),
-        adminRequest('list', 'presenters', undefined, undefined, { order: { column: 'name', ascending: true } }, adminPwd),
+        getPresenters(),
         getCompanySettings(),
       ]);
       setWorkshops(ws || []);
