@@ -536,6 +536,9 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
                     {ws.event_type === 'webinar' ? 'Webinar' : 'Workshop'}
                   </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${ws.is_public === false ? 'bg-destructive/15 text-destructive' : 'bg-primary/15 text-primary'}`}>
+                    {ws.is_public === false ? 'Private' : 'Public'}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">{format(new Date(ws.date), 'dd MMM yyyy HH:mm')} · {ws.location || 'No location'}</p>
               </div>
