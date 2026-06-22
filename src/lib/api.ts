@@ -177,11 +177,10 @@ export async function markCourseLessonComplete(lessonId: string, courseId: strin
 }
 
 export async function unmarkLessonComplete(lessonId: string, email: string) {
-  const { error } = await supabase
-    .from('lesson_completions')
-    .delete()
-    .eq('lesson_id', lessonId)
-    .eq('email', email.toLowerCase());
+  const { error } = await supabase.rpc('unmark_lesson_completion', {
+    p_lesson_id: lessonId,
+    p_email: email.toLowerCase(),
+  });
   if (error) throw error;
 }
 
