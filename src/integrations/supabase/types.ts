@@ -150,6 +150,7 @@ export type Database = {
           description: string | null
           final_pass_score: number
           id: string
+          is_public: boolean
           lesson_quiz_weight: number
           materials: Json
           order_index: number
@@ -165,6 +166,7 @@ export type Database = {
           description?: string | null
           final_pass_score?: number
           id?: string
+          is_public?: boolean
           lesson_quiz_weight?: number
           materials?: Json
           order_index?: number
@@ -180,6 +182,7 @@ export type Database = {
           description?: string | null
           final_pass_score?: number
           id?: string
+          is_public?: boolean
           lesson_quiz_weight?: number
           materials?: Json
           order_index?: number
@@ -511,6 +514,7 @@ export type Database = {
           event_type: string
           id: string
           is_completed: boolean
+          is_public: boolean
           location: string | null
           max_participants: number | null
           partner_logos: string[] | null
@@ -527,6 +531,7 @@ export type Database = {
           event_type?: string
           id?: string
           is_completed?: boolean
+          is_public?: boolean
           location?: string | null
           max_participants?: number | null
           partner_logos?: string[] | null
@@ -543,6 +548,7 @@ export type Database = {
           event_type?: string
           id?: string
           is_completed?: boolean
+          is_public?: boolean
           location?: string | null
           max_participants?: number | null
           partner_logos?: string[] | null
