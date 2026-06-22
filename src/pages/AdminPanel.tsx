@@ -99,7 +99,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '' });
+  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
