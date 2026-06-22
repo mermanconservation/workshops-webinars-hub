@@ -163,6 +163,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         location: form.location || null,
         event_type: form.event_type,
         timeline: form.timeline || null,
+        is_public: form.is_public,
       };
       let wsId = editId;
       if (editId) {
