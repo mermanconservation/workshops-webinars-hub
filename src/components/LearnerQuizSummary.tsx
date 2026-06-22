@@ -39,6 +39,9 @@ export function LearnerQuizSummary({ email, lessonQuizzes, finalQuiz, lessons }:
   const [openQuiz, setOpenQuiz] = useState<string | null>(null);
   const [openAttempt, setOpenAttempt] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState<'all' | 'lesson' | 'final'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'passed' | 'failed' | 'none'>('all');
 
   const allQuizzes = [...lessonQuizzes, ...(finalQuiz ? [finalQuiz] : [])];
 
@@ -50,6 +53,24 @@ export function LearnerQuizSummary({ email, lessonQuizzes, finalQuiz, lessons }:
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, lessonQuizzes.length, finalQuiz?.id]);
+
+  const filteredQuizzes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allQuizzes.filter(quiz => {
+      if (kindFilter !== 'all' && quiz.kind !== kindFilter) return false;
+      const list = attempts[quiz.id] || [];
+      if (statusFilter === 'passed' && !list.some(a => a.passed)) return false;
+      if (statusFilter === 'failed' && !(list.length > 0 && !list.some(a => a.passed))) return false;
+      if (statusFilter === 'none' && list.length > 0) return false;
+      if (q) {
+        const lessonTitle = quiz.lesson_id ? lessons.find(l => l.id === quiz.lesson_id)?.title || '' : '';
+        const hay = (quiz.title + ' ' + lessonTitle).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allQuizzes, attempts, search, kindFilter, statusFilter, lessons]);
 
   if (!email.trim() || allQuizzes.length === 0) return null;
 
