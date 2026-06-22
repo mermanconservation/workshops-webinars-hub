@@ -190,7 +190,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
       toast({ title: editId ? 'Event updated' : 'Event created' });
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' });
+      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
       load();
     } catch (e: any) {
       toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
