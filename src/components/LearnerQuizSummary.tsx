@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Award, ClipboardList } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Award, ClipboardList, Search, X } from 'lucide-react';
 import { Question, QuestionSchema, getAllAttempts, scoreQuiz } from '@/lib/quiz';
 import { z } from 'zod';
 
