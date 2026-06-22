@@ -483,7 +483,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-foreground">Events</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' }); }} className="bg-accent text-accent-foreground gap-1">
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '', is_public: true }); }} className="bg-accent text-accent-foreground gap-1">
           <Plus className="w-4 h-4" /> Add Event
         </Button>
       </div>
