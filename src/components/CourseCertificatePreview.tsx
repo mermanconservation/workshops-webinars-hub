@@ -1,5 +1,9 @@
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { FileText, Download, ExternalLink } from 'lucide-react';
+import { FileText, Download, ExternalLink, FileDown, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
   open: boolean;
@@ -18,6 +22,33 @@ export function CourseCertificatePreview({ open, onClose, templateUrl, courseTit
   const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const sampleName = 'Sample Recipient Name';
   const sampleCode = 'CR-PREVIEW1';
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
+
+  const exportPdf = async () => {
+    if (!previewRef.current) return;
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(previewRef.current, {
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scale: 2,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const w = pdf.internal.pageSize.getWidth();
+      const h = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+      const slug = courseTitle.replace(/\s+/g, '-').toLowerCase().slice(0, 60) || 'course';
+      pdf.save(`certificate-preview-${slug}.pdf`);
+      toast({ title: 'Preview exported', description: 'Certificate preview PDF downloaded.' });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e?.message || 'Could not export PDF.', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -38,11 +69,11 @@ export function CourseCertificatePreview({ open, onClose, templateUrl, courseTit
         )}
 
         {templateUrl && (
-          <div className="relative rounded-md overflow-hidden border border-border bg-[#fcfdff]" style={{ aspectRatio: '297/210' }}>
+          <div ref={previewRef} className="relative rounded-md overflow-hidden border border-border bg-[#fcfdff]" style={{ aspectRatio: '297/210' }}>
             {isPdf ? (
               <iframe src={templateUrl + '#toolbar=0&navpanes=0'} className="absolute inset-0 w-full h-full" title="Certificate template" />
             ) : (
-              <img src={templateUrl} alt="Certificate template" className="absolute inset-0 w-full h-full object-contain" />
+              <img src={templateUrl} alt="Certificate template" crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-contain" />
             )}
 
             {/* Placeholder overlays */}
@@ -64,7 +95,18 @@ export function CourseCertificatePreview({ open, onClose, templateUrl, courseTit
         )}
 
         {templateUrl && (
-          <div className="flex justify-end gap-3 text-xs">
+          <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+            {isPdf && (
+              <span className="text-muted-foreground italic mr-auto">PDF templates can't be exported as a flattened preview — open the original to inspect.</span>
+            )}
+            <button
+              onClick={exportPdf}
+              disabled={exporting || isPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+              Export preview as PDF
+            </button>
             <a href={templateUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-accent hover:underline">
               <ExternalLink className="w-3 h-3" /> Open original
             </a>
