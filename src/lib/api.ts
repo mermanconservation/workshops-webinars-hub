@@ -217,9 +217,11 @@ export async function getCompanySettings() {
 }
 
 export async function getPresenters() {
+  // Email column is intentionally excluded from the public Data API surface
+  // (column-level GRANT). Admin code reads it via the admin-operations edge function.
   const { data, error } = await supabase
     .from('presenters')
-    .select('*')
+    .select('id, name, title, bio, photo_url, signature_url, created_at')
     .order('name');
   if (error) throw error;
   return data;
