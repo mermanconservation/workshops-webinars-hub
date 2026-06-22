@@ -514,6 +514,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
             </div>
             <Textarea placeholder="Description (use **bold** and line breaks for formatting)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-4" rows={4} />
             <Textarea placeholder="Timeline / Programme (optional — use line breaks for each item)" value={form.timeline} onChange={e => setForm(f => ({ ...f, timeline: e.target.value }))} className="mt-4" rows={4} />
+            <label className="flex items-center gap-2 mt-4 text-sm cursor-pointer select-none">
+              <input type="checkbox" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public: e.target.checked }))} className="w-4 h-4 accent-primary" />
+              <span>Public — visible on the homepage to all visitors</span>
+            </label>
             <Button onClick={saveWorkshop} className="mt-4 bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
           </motion.div>
         )}
