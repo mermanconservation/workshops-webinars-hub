@@ -99,7 +99,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '' });
+  const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -163,6 +163,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         location: form.location || null,
         event_type: form.event_type,
         timeline: form.timeline || null,
+        is_public: form.is_public,
       };
       let wsId = editId;
       if (editId) {
@@ -189,7 +190,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
       toast({ title: editId ? 'Event updated' : 'Event created' });
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' });
+      setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
       load();
     } catch (e: any) {
       toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
@@ -482,7 +483,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-foreground">Events</h2>
-        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '' }); }} className="bg-accent text-accent-foreground gap-1">
+        <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [], max_participants: '', event_type: 'workshop', timeline: '', is_public: true }); }} className="bg-accent text-accent-foreground gap-1">
           <Plus className="w-4 h-4" /> Add Event
         </Button>
       </div>
@@ -513,6 +514,10 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
             </div>
             <Textarea placeholder="Description (use **bold** and line breaks for formatting)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-4" rows={4} />
             <Textarea placeholder="Timeline / Programme (optional — use line breaks for each item)" value={form.timeline} onChange={e => setForm(f => ({ ...f, timeline: e.target.value }))} className="mt-4" rows={4} />
+            <label className="flex items-center gap-2 mt-4 text-sm cursor-pointer select-none">
+              <input type="checkbox" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public: e.target.checked }))} className="w-4 h-4 accent-primary" />
+              <span>Public — visible on the homepage to all visitors</span>
+            </label>
             <Button onClick={saveWorkshop} className="mt-4 bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
           </motion.div>
         )}
@@ -531,12 +536,15 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
                     {ws.event_type === 'webinar' ? 'Webinar' : 'Workshop'}
                   </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${ws.is_public === false ? 'bg-destructive/15 text-destructive' : 'bg-primary/15 text-primary'}`}>
+                    {ws.is_public === false ? 'Private' : 'Public'}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">{format(new Date(ws.date), 'dd MMM yyyy HH:mm')} · {ws.location || 'No location'}</p>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => toggleComplete(ws)} className="text-xs">{ws.is_completed ? 'Reopen' : 'Complete'}</Button>
-                <Button variant="ghost" size="sm" onClick={async () => { const wps = await getWorkshopPresenters(ws.id); setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_ids: wps.map((wp: any) => wp.presenter_id), max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '' }); setShowForm(true); }}>
+                <Button variant="ghost" size="sm" onClick={async () => { const wps = await getWorkshopPresenters(ws.id); setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_ids: wps.map((wp: any) => wp.presenter_id), max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '', is_public: ws.is_public !== false }); setShowForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => deleteWorkshop(ws.id)} className="text-destructive hover:text-destructive">
@@ -1093,7 +1101,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '' });
+  const [form, setForm] = useState({ title: '', description: '', is_public: true });
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
@@ -1251,13 +1259,13 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     }
     try {
       if (editId) {
-        await adminRequest('update', 'courses', { title: form.title, description: form.description || null }, editId, undefined, adminPwd);
+        await adminRequest('update', 'courses', { title: form.title, description: form.description || null, is_public: form.is_public }, editId, undefined, adminPwd);
       } else {
-        await adminRequest('insert', 'courses', { title: form.title, description: form.description || null, order_index: courses.length }, undefined, undefined, adminPwd);
+        await adminRequest('insert', 'courses', { title: form.title, description: form.description || null, order_index: courses.length, is_public: form.is_public }, undefined, undefined, adminPwd);
       }
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '' });
+      setForm({ title: '', description: '', is_public: true });
       load();
       toast({ title: editId ? 'Course updated' : 'Course created' });
     } catch (e: any) {
@@ -1604,7 +1612,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
             <FileUp className="w-4 h-4" /> Import Course JSON
             <input type="file" accept="application/json,.json" className="hidden" onChange={e => { if (e.target.files?.[0]) { importCourseJson(e.target.files[0]); e.target.value = ''; } }} />
           </label>
-          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
+          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', is_public: true }); }} className="bg-accent text-accent-foreground gap-1">
             <Plus className="w-4 h-4" /> Add Course
           </Button>
         </div>
@@ -1619,6 +1627,10 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
             </div>
             <Input placeholder="Course title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mb-4" />
             <Textarea placeholder="Course description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} />
+            <label className="flex items-center gap-2 mt-4 text-sm cursor-pointer select-none">
+              <input type="checkbox" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public: e.target.checked }))} className="w-4 h-4 accent-primary" />
+              <span>Public — visible on the homepage to all visitors</span>
+            </label>
             <div className="flex gap-2 mt-4">
               <Button onClick={saveCourse} className="bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -1640,7 +1652,12 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                   <button onClick={() => toggleExpand(c.id)} className="flex items-start gap-2 flex-1 text-left">
                     {isExpanded ? <ChevronDown className="w-4 h-4 mt-1 text-accent flex-shrink-0" /> : <ChevronRight className="w-4 h-4 mt-1 text-muted-foreground flex-shrink-0" />}
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{c.title}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground">{c.title}</h3>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_public === false ? 'bg-destructive/15 text-destructive' : 'bg-primary/15 text-primary'}`}>
+                          {c.is_public === false ? 'Private' : 'Public'}
+                        </span>
+                      </div>
                       {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{c.description}</p>}
                       <p className="text-xs text-accent mt-1">{Array.isArray(c.materials) ? c.materials.length : 0} material(s) · {(lessonsByCourse[c.id] || []).length} lesson(s) {!isExpanded && '— click to manage'}</p>
                     </div>
@@ -1652,7 +1669,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                     <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
                     <Button variant="ghost" size="sm" onClick={() => exportCourseJson(c)} title="Export course as JSON"><Download className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '', is_public: c.is_public !== false }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>

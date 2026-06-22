@@ -14,9 +14,9 @@ const Index = () => {
   useEffect(() => {
     Promise.all([getWorkshops(), getCompanySettings(), getCourses()])
       .then(([ws, cs, cr]) => {
-        setWorkshops(ws || []);
+        setWorkshops((ws || []).filter((w: any) => w.is_public !== false));
         setCompany(cs);
-        setCourses(cr || []);
+        setCourses((cr || []).filter((c: any) => c.is_public !== false));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
