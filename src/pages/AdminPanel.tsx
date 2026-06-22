@@ -1652,7 +1652,12 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                   <button onClick={() => toggleExpand(c.id)} className="flex items-start gap-2 flex-1 text-left">
                     {isExpanded ? <ChevronDown className="w-4 h-4 mt-1 text-accent flex-shrink-0" /> : <ChevronRight className="w-4 h-4 mt-1 text-muted-foreground flex-shrink-0" />}
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{c.title}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground">{c.title}</h3>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_public === false ? 'bg-destructive/15 text-destructive' : 'bg-primary/15 text-primary'}`}>
+                          {c.is_public === false ? 'Private' : 'Public'}
+                        </span>
+                      </div>
                       {c.description && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">{c.description}</p>}
                       <p className="text-xs text-accent mt-1">{Array.isArray(c.materials) ? c.materials.length : 0} material(s) · {(lessonsByCourse[c.id] || []).length} lesson(s) {!isExpanded && '— click to manage'}</p>
                     </div>
