@@ -1660,7 +1660,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
                     <button onClick={() => moveCourse(c.id, -1)} disabled={idx === 0} title="Move up" className="disabled:opacity-30"><ArrowUp className="w-4 h-4 text-muted-foreground" /></button>
                     <button onClick={() => moveCourse(c.id, 1)} disabled={idx === courses.length - 1} title="Move down" className="disabled:opacity-30"><ArrowDown className="w-4 h-4 text-muted-foreground" /></button>
                     <Button variant="ghost" size="sm" onClick={() => exportCourseJson(c)} title="Export course as JSON"><Download className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '' }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditId(c.id); setForm({ title: c.title, description: c.description || '', is_public: c.is_public !== false }); setShowForm(true); }}><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteCourse(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
