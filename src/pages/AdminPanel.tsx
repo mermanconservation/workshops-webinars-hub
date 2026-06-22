@@ -537,7 +537,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => toggleComplete(ws)} className="text-xs">{ws.is_completed ? 'Reopen' : 'Complete'}</Button>
-                <Button variant="ghost" size="sm" onClick={async () => { const wps = await getWorkshopPresenters(ws.id); setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_ids: wps.map((wp: any) => wp.presenter_id), max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '' }); setShowForm(true); }}>
+                <Button variant="ghost" size="sm" onClick={async () => { const wps = await getWorkshopPresenters(ws.id); setEditId(ws.id); setForm({ title: ws.title, description: ws.description || '', date: ws.date?.substring(0, 16) || '', duration_minutes: ws.duration_minutes, location: ws.location || '', presenter_ids: wps.map((wp: any) => wp.presenter_id), max_participants: ws.max_participants?.toString() || '', event_type: ws.event_type || 'workshop', timeline: ws.timeline || '', is_public: ws.is_public !== false }); setShowForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => deleteWorkshop(ws.id)} className="text-destructive hover:text-destructive">
