@@ -566,7 +566,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      unmark_lesson_completion: {
+        Args: { p_email: string; p_lesson_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
