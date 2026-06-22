@@ -1627,6 +1627,10 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
             </div>
             <Input placeholder="Course title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mb-4" />
             <Textarea placeholder="Course description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} />
+            <label className="flex items-center gap-2 mt-4 text-sm cursor-pointer select-none">
+              <input type="checkbox" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public: e.target.checked }))} className="w-4 h-4 accent-primary" />
+              <span>Public — visible on the homepage to all visitors</span>
+            </label>
             <div className="flex gap-2 mt-4">
               <Button onClick={saveCourse} className="bg-primary text-primary-foreground gap-1"><Save className="w-4 h-4" /> Save</Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
