@@ -1612,7 +1612,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
             <FileUp className="w-4 h-4" /> Import Course JSON
             <input type="file" accept="application/json,.json" className="hidden" onChange={e => { if (e.target.files?.[0]) { importCourseJson(e.target.files[0]); e.target.value = ''; } }} />
           </label>
-          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '' }); }} className="bg-accent text-accent-foreground gap-1">
+          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ title: '', description: '', is_public: true }); }} className="bg-accent text-accent-foreground gap-1">
             <Plus className="w-4 h-4" /> Add Course
           </Button>
         </div>
