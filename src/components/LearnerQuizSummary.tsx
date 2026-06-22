@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Award, ClipboardList } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Award, ClipboardList, Search, X } from 'lucide-react';
 import { Question, QuestionSchema, getAllAttempts, scoreQuiz } from '@/lib/quiz';
 import { z } from 'zod';
 
@@ -39,6 +39,9 @@ export function LearnerQuizSummary({ email, lessonQuizzes, finalQuiz, lessons }:
   const [openQuiz, setOpenQuiz] = useState<string | null>(null);
   const [openAttempt, setOpenAttempt] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState<'all' | 'lesson' | 'final'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'passed' | 'failed' | 'none'>('all');
 
   const allQuizzes = [...lessonQuizzes, ...(finalQuiz ? [finalQuiz] : [])];
 
@@ -50,6 +53,24 @@ export function LearnerQuizSummary({ email, lessonQuizzes, finalQuiz, lessons }:
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, lessonQuizzes.length, finalQuiz?.id]);
+
+  const filteredQuizzes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allQuizzes.filter(quiz => {
+      if (kindFilter !== 'all' && quiz.kind !== kindFilter) return false;
+      const list = attempts[quiz.id] || [];
+      if (statusFilter === 'passed' && !list.some(a => a.passed)) return false;
+      if (statusFilter === 'failed' && !(list.length > 0 && !list.some(a => a.passed))) return false;
+      if (statusFilter === 'none' && list.length > 0) return false;
+      if (q) {
+        const lessonTitle = quiz.lesson_id ? lessons.find(l => l.id === quiz.lesson_id)?.title || '' : '';
+        const hay = (quiz.title + ' ' + lessonTitle).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allQuizzes, attempts, search, kindFilter, statusFilter, lessons]);
 
   if (!email.trim() || allQuizzes.length === 0) return null;
 
@@ -77,8 +98,49 @@ export function LearnerQuizSummary({ email, lessonQuizzes, finalQuiz, lessons }:
       </div>
       <p className="text-xs text-muted-foreground">Review your attempts, scores, and selected answers before downloading the certificate.</p>
 
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search quiz or lesson…"
+            className="w-full h-8 pl-8 pr-7 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <select
+          value={kindFilter}
+          onChange={e => setKindFilter(e.target.value as any)}
+          className="h-8 px-2 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="all">All types</option>
+          <option value="lesson">Lesson quizzes</option>
+          <option value="final">Final exam</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as any)}
+          className="h-8 px-2 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="all">All statuses</option>
+          <option value="passed">Passed</option>
+          <option value="failed">Failed</option>
+          <option value="none">No attempts</option>
+        </select>
+        <span className="text-xs text-muted-foreground">{filteredQuizzes.length}/{allQuizzes.length}</span>
+      </div>
+
       <div className="space-y-2">
-        {allQuizzes.map(q => {
+        {filteredQuizzes.length === 0 && (
+          <p className="text-xs text-muted-foreground italic px-1 py-3">No quizzes match the current filters.</p>
+        )}
+        {filteredQuizzes.map(q => {
           const parsed = z.array(QuestionSchema).safeParse(q.questions);
           if (!parsed.success) return null;
           const questions = parsed.data;
