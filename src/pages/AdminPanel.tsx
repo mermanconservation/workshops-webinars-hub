@@ -1259,13 +1259,13 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
     }
     try {
       if (editId) {
-        await adminRequest('update', 'courses', { title: form.title, description: form.description || null }, editId, undefined, adminPwd);
+        await adminRequest('update', 'courses', { title: form.title, description: form.description || null, is_public: form.is_public }, editId, undefined, adminPwd);
       } else {
-        await adminRequest('insert', 'courses', { title: form.title, description: form.description || null, order_index: courses.length }, undefined, undefined, adminPwd);
+        await adminRequest('insert', 'courses', { title: form.title, description: form.description || null, order_index: courses.length, is_public: form.is_public }, undefined, undefined, adminPwd);
       }
       setShowForm(false);
       setEditId(null);
-      setForm({ title: '', description: '' });
+      setForm({ title: '', description: '', is_public: true });
       load();
       toast({ title: editId ? 'Course updated' : 'Course created' });
     } catch (e: any) {
