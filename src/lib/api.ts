@@ -50,32 +50,37 @@ export async function generateCertificateText(params: {
 
 // Public read operations using supabase client directly
 export async function getWorkshops() {
+  const presenterCols = 'id, name, title, bio, photo_url, signature_url, created_at';
   const { data, error } = await supabase
     .from('workshops')
-    .select('*, presenters(*), workshop_presenters(presenter_id, presenters(*))')
+    .select(`*, presenters:presenter_id(${presenterCols}), workshop_presenters(presenter_id, presenters(${presenterCols}))`)
     .order('date', { ascending: true });
   if (error) throw error;
   return data;
 }
 
 export async function getWorkshop(id: string) {
+  const presenterCols = 'id, name, title, bio, photo_url, signature_url, created_at';
   const { data, error } = await supabase
     .from('workshops')
-    .select('*, presenters(*), workshop_presenters(presenter_id, presenters(*))')
+    .select(`*, presenters:presenter_id(${presenterCols}), workshop_presenters(presenter_id, presenters(${presenterCols}))`)
     .eq('id', id)
     .single();
   if (error) throw error;
   return data;
 }
 
+
 export async function getWorkshopPresenters(workshopId: string) {
+  const presenterCols = 'id, name, title, bio, photo_url, signature_url, created_at';
   const { data, error } = await supabase
     .from('workshop_presenters')
-    .select('*, presenters(*)')
+    .select(`*, presenters(${presenterCols})`)
     .eq('workshop_id', workshopId);
   if (error) throw error;
   return data;
 }
+
 
 export async function getWorkshopVideos(workshopId: string) {
   const { data, error } = await supabase

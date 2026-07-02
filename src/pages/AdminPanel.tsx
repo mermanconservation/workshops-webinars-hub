@@ -101,6 +101,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
@@ -523,8 +524,17 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         )}
       </AnimatePresence>
 
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">Filter:</span>
+        {(['all', 'public', 'private'] as const).map(f => (
+          <button key={f} onClick={() => setVisibilityFilter(f)} className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${visibilityFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:text-foreground'}`}>
+            {f === 'all' ? `All (${workshops.length})` : f === 'public' ? `Public (${workshops.filter(w => w.is_public !== false).length})` : `Private (${workshops.filter(w => w.is_public === false).length})`}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-3">
-        {workshops.map(ws => (
+        {workshops.filter(ws => visibilityFilter === 'all' ? true : visibilityFilter === 'public' ? ws.is_public !== false : ws.is_public === false).map(ws => (
           <div key={ws.id} className={`bg-card border rounded-lg p-4 transition-colors ${selectedWorkshop === ws.id ? 'border-accent' : 'border-border'}`}>
             <div className="flex items-start justify-between">
               <div className="flex-1 cursor-pointer" onClick={() => loadWorkshopDetails(ws.id)}>
@@ -1103,6 +1113,7 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', is_public: true });
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [lessonForm, setLessonForm] = useState({ title: '', description: '', video_url: '' });
   const [editLessonId, setEditLessonId] = useState<string | null>(null);
   const [quizEditorOpen, setQuizEditorOpen] = useState<{ courseId: string; quiz: any | null } | null>(null);
@@ -1639,11 +1650,20 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
         )}
       </AnimatePresence>
 
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">Filter:</span>
+        {(['all', 'public', 'private'] as const).map(f => (
+          <button key={f} onClick={() => setVisibilityFilter(f)} className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${visibilityFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:text-foreground'}`}>
+            {f === 'all' ? `All (${courses.length})` : f === 'public' ? `Public (${courses.filter(c => c.is_public !== false).length})` : `Private (${courses.filter(c => c.is_public === false).length})`}
+          </button>
+        ))}
+      </div>
+
       {courses.length === 0 ? (
         <p className="text-muted-foreground text-sm">No courses yet. Add your first course to start uploading materials and lessons.</p>
       ) : (
         <div className="grid gap-3">
-          {courses.map((c, idx) => {
+          {courses.filter(c => visibilityFilter === 'all' ? true : visibilityFilter === 'public' ? c.is_public !== false : c.is_public === false).map((c, idx) => {
             const lessons = lessonsByCourse[c.id] || [];
             const isExpanded = expandedCourse === c.id;
             return (
