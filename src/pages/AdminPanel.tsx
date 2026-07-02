@@ -524,8 +524,17 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
         )}
       </AnimatePresence>
 
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">Filter:</span>
+        {(['all', 'public', 'private'] as const).map(f => (
+          <button key={f} onClick={() => setVisibilityFilter(f)} className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${visibilityFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:text-foreground'}`}>
+            {f === 'all' ? `All (${workshops.length})` : f === 'public' ? `Public (${workshops.filter(w => w.is_public !== false).length})` : `Private (${workshops.filter(w => w.is_public === false).length})`}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-3">
-        {workshops.map(ws => (
+        {workshops.filter(ws => visibilityFilter === 'all' ? true : visibilityFilter === 'public' ? ws.is_public !== false : ws.is_public === false).map(ws => (
           <div key={ws.id} className={`bg-card border rounded-lg p-4 transition-colors ${selectedWorkshop === ws.id ? 'border-accent' : 'border-border'}`}>
             <div className="flex items-start justify-between">
               <div className="flex-1 cursor-pointer" onClick={() => loadWorkshopDetails(ws.id)}>
