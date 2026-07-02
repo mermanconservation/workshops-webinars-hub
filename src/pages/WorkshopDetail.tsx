@@ -177,7 +177,7 @@ const WorkshopDetail = () => {
   const presenterNamesArray = presenters.map((p: any) => p.name).filter(Boolean);
   const presenterNames = presenterNamesArray.join(', ');
 
-  const handleRegister = async () => {
+  const handleRegister = async (opts?: { addToCalendar?: boolean }) => {
     if (!regName.trim() || !regEmail.trim()) {
       toast({ title: 'Please fill in your name and email', variant: 'destructive' });
       return;
@@ -190,8 +190,17 @@ const WorkshopDetail = () => {
       setRegEmail('');
       const p = await getWorkshopParticipants(id!);
       setParticipants(p || []);
+      if (opts?.addToCalendar && workshop) {
+        window.open(generateGoogleCalendarUrl(workshop), '_blank', 'noopener,noreferrer');
+        generateICSFile(workshop);
+      }
     } catch (e: any) {
-      toast({ title: e.message?.includes('duplicate') ? 'Already registered!' : 'Registration failed', variant: 'destructive' });
+      const isDup = e.message?.includes('duplicate');
+      toast({ title: isDup ? 'Already registered!' : 'Registration failed', variant: isDup ? 'default' : 'destructive' });
+      if (isDup && opts?.addToCalendar && workshop) {
+        window.open(generateGoogleCalendarUrl(workshop), '_blank', 'noopener,noreferrer');
+        generateICSFile(workshop);
+      }
     }
     setRegistering(false);
   };
