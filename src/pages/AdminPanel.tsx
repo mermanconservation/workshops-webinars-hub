@@ -1650,11 +1650,20 @@ function CoursesTab({ adminPwd }: { adminPwd: string }) {
         )}
       </AnimatePresence>
 
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">Filter:</span>
+        {(['all', 'public', 'private'] as const).map(f => (
+          <button key={f} onClick={() => setVisibilityFilter(f)} className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${visibilityFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:text-foreground'}`}>
+            {f === 'all' ? `All (${courses.length})` : f === 'public' ? `Public (${courses.filter(c => c.is_public !== false).length})` : `Private (${courses.filter(c => c.is_public === false).length})`}
+          </button>
+        ))}
+      </div>
+
       {courses.length === 0 ? (
         <p className="text-muted-foreground text-sm">No courses yet. Add your first course to start uploading materials and lessons.</p>
       ) : (
         <div className="grid gap-3">
-          {courses.map((c, idx) => {
+          {courses.filter(c => visibilityFilter === 'all' ? true : visibilityFilter === 'public' ? c.is_public !== false : c.is_public === false).map((c, idx) => {
             const lessons = lessonsByCourse[c.id] || [];
             const isExpanded = expandedCourse === c.id;
             return (
