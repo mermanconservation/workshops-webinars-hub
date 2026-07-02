@@ -358,8 +358,11 @@ const WorkshopDetail = () => {
               <div className="space-y-3">
                 <Input placeholder="Full Name" value={regName} onChange={e => setRegName(e.target.value)} />
                 <Input placeholder="Email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} />
-                <Button onClick={handleRegister} disabled={registering} className="w-full bg-accent text-accent-foreground hover:opacity-90">
+                <Button onClick={() => handleRegister()} disabled={registering} className="w-full bg-accent text-accent-foreground hover:opacity-90">
                   {registering ? 'Registering...' : `Join ${eventLabel}`}
+                </Button>
+                <Button onClick={() => handleRegister({ addToCalendar: true })} disabled={registering} variant="outline" className="w-full gap-2">
+                  <Calendar className="w-4 h-4" /> Join & Add to Calendar
                 </Button>
               </div>
             </div>
