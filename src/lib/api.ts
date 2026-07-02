@@ -72,13 +72,15 @@ export async function getWorkshop(id: string) {
 
 
 export async function getWorkshopPresenters(workshopId: string) {
+  const presenterCols = 'id, name, title, bio, photo_url, signature_url, created_at';
   const { data, error } = await supabase
     .from('workshop_presenters')
-    .select('*, presenters(*)')
+    .select(`*, presenters(${presenterCols})`)
     .eq('workshop_id', workshopId);
   if (error) throw error;
   return data;
 }
+
 
 export async function getWorkshopVideos(workshopId: string) {
   const { data, error } = await supabase
