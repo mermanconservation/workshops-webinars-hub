@@ -101,6 +101,7 @@ function WorkshopsTab({ adminPwd }: { adminPwd: string }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', date: '', duration_minutes: 60, location: '', presenter_ids: [] as string[], max_participants: '', event_type: 'workshop', timeline: '', is_public: true });
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [videos, setVideos] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
